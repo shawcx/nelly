@@ -1,0 +1,20 @@
+include "constants.bnf"
+
+<%pre
+    import base64
+    import beaker
+%>
+
+DEMO(start)
+    : INPUT "\n" B1 "\n" $B2
+    ;
+
+B1: %base64.b64encode(\INPUT);
+
+$B2: \INPUT <% $* = base64.b64encode($$) %>;
+
+INPUT: ("A"|"a"){5,10};
+
+<%post
+    hexdump($$)
+%>

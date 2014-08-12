@@ -1,0 +1,14 @@
+/*
+    Example BNF input file for Nelly.
+    /* Nested comments */
+*/
+
+include 'constants.bnf'
+
+::MATT(start)
+    : 'abc'
+    ;
+
+<%post
+    print($$)
+%>

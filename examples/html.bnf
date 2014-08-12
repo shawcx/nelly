@@ -1,0 +1,44 @@
+
+include "constants.bnf"
+
+<%pre
+    import base64
+    $path
+%>
+
+HTML_START(start)
+    : "<html>" CRLF HEAD CRLF BODYTAG CRLF "</html>"
+    ;
+
+HEAD
+    : "<head>" CRLF "<title>" TITLE "</title>" CRLF "</head>"
+    ;
+
+TITLE
+    : RANDCHAR{5,10}
+    ;
+
+BODYTAG
+    : "<body>" CRLF BODY CRLF "</body>"
+    ;
+
+BODY
+    : WORD ' => ' $ENCODER SP %str(%len(\WORD)) ' bytes'
+    ;
+
+$ENCODER
+    : \WORD <% $* = base64.b64encode($$) %>
+    ;
+
+<%post
+    sFullPath = os.path.join($path, 'test.html')
+
+    print sFullPath
+    print
+    print $$
+    print
+
+    #fp = open(sFullPath, 'wb')
+    #fp.write($$)
+    #fp.close()
+%>

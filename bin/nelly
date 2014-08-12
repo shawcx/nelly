@@ -1,0 +1,88 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import argparse
+import time
+import logging
+
+# hack for local dev
+path = os.path.dirname(__file__)
+path = os.path.join(path, '..')
+path = os.path.abspath(path)
+sys.path.insert(0, path)
+
+import beaker
+import nelly
+
+beaker.argparser.add_argument('grammar',
+    nargs='?', type=argparse.FileType('r'), default=sys.stdin,
+    help='Input file')
+
+beaker.argparser.add_argument('--count', '-c',
+    type=int, default=1,
+    help='Include path')
+
+beaker.argparser.add_argument('--include', '-I',
+    action='append',
+    help='Include path')
+
+beaker.argparser.add_argument('--vars', '-v',
+    action='append',
+    help='Variables to set')
+
+def main():
+    beaker.config.load()
+    # TODO: catch exception for prettier printing
+
+    includes = beaker.args.include or []
+
+    variables = {}
+    if beaker.args.vars:
+        for var in beaker.args.vars:
+            name,value = var.split('=', 1)
+            name = '$'+name
+            variables[name] = value
+
+    if beaker.args.grammar == sys.stdin:
+        logging.info('Reading from stdin')
+
+    try:
+        grammar = beaker.args.grammar.read()
+    except KeyboardInterrupt:
+        return -1;
+
+    logging.debug('Parsing grammar')
+    parser = nelly.Parser(includes)
+    parser.Parse(grammar)
+
+    logging.debug('Serializing program')
+    package = parser.program.Save()
+
+    logging.debug('Loading Program')
+    program = nelly.Program.Load(package)
+
+    logging.debug('Executing program')
+    count = 0
+    t1 = time.time()
+    try:
+        while not beaker.args.count or count < beaker.args.count:
+            sandbox = nelly.Sandbox(variables)
+            sandbox.Execute(program)
+            count += 1
+            #if not (count & 0xff):
+            #    logging.debug('Tests/sec: %.2f', count / (time.time() - t1))
+    except KeyboardInterrupt:
+        pass
+    t2 = time.time()
+
+    logging.info('Ran %d iterations in %.2f seconds (%.2f tps)', count, t2 - t1, count / (t2 - t1))
+
+    return 0
+
+if '__main__' == __name__:
+    try:
+        sys.exit(main())
+    except beaker.error as e:
+        logging.error('%s', e)
+        sys.exit(-1)

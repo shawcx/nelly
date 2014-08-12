@@ -1,0 +1,34 @@
+include "constants.bnf"
+
+<%pre
+    class Nelly:
+        def __init__(self, sData='default'):
+            self.sData = sData
+
+        def __str__(self):
+            return 'Class Nelly: <%s>' % self.sData
+
+        def some_function(self, sAppend):
+            return self.sData.lower() + ' ' + sAppend
+%>
+
+START(start)
+    : %str($CLASS) SP $INSTANCE
+    ;
+
+$CLASS
+    : RANDOM <% $* = Nelly($$) %>
+    ;
+
+$INSTANCE
+    : \$CLASS <% $* = $$.some_function('Append') %>
+    ;
+
+RANDOM
+    : ("A"|"B"|"C"){5,10}
+    ;
+
+<%post
+    print $$
+%>
+

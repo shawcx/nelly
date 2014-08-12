@@ -1,0 +1,16 @@
+
+# This selects A or B
+NT1: 'A' | 'B';
+
+# This creates a random mix of A's and B's
+NT2: ('A'|'B'){5,20};
+
+# Equivalent to NT2
+NT3: NT1{5,20};
+
+// This is also a comment
+EXAMPLE(start): NT1 '\n' NT2 '\n' NT3;
+
+<%post
+    # This represents the output of the starting non-terminal
+%>

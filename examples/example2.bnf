@@ -1,0 +1,49 @@
+/*
+    Example BNF input file for Nelly.
+
+    /* Nested comments */
+*/
+
+include 'constants.bnf'
+
+<%pre
+    import nelly
+    import logging
+
+    #try:
+    #    $host
+    #except KeyError:
+    #    raise nelly.error('use -v host=<value> on the command line')
+    #import socket
+    #skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #try:
+    #    skt.connect(($host, 22))
+    #except:
+    #    logging.debug('Could not connect to host: %s', $host)
+
+    import struct
+%>
+
+$EXAMPLE: <% $* = 'Matthew' %>;
+
+NT(start): ($EXAMPLE ' ' \$EXAMPLE);
+
+TRIGGER: %struct.pack('>I', 0x61626364);
+
+#NT: ( ( <10> A <% print $$ %> | <90> B <% print $$ %> ) | C ) <% print 'all' %> ;
+#
+#EXAMPLE(start,pure)
+#    : <1> $EXAMPLE{2,3}[:5]
+#    | <3> %os.path.abspath('.', $True, \$True) 0x10
+#    ;
+#
+#$EXAMPLE
+#    : empty <% $* = 'somestring' %>
+#    | <% $* = 'another string' %>
+#    ;
+#
+<%post
+    print('$$ =', repr($$))
+    print(repr($_Nonterminal('TRIGGER')))
+    exit()
+%>

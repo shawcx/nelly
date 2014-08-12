@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Nelly Documentation</title>
+  <link type="text/css" rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <h1>Nelly</h1>
+  <h2>Matthew Oertle - June 2014</h2>
+
+<pre>&lt;%pre
+    import sys
+%&gt;
+
+::NT(start)
+    : 'A' # comment
+    | 'B' &lt;% print $$ %&gt;
+    ;
+
+&lt;%post
+    print $$
+%&gt;</pre>
+
+
+<a id="CONSTANTS" />
+<h3>Constants</h3>
+<p>Constants in productions can consist of double-quoted strings, single-quoted strings, decimal, hexadecimal, or octal numbers.</p>
+<pre>
+A: "A" | 'A' | 65 | 0x41 | 0101;
+</pre>
+
+<br />
+
+<a id="CONCATENATION" />
+<h3>Concatenation</h3>
+<p>Productions are concatenated when they are seperated by white-space.</p>
+<pre>
+CONCAT: "CONC" 0x41 "TEN" 65 "TION";
+</pre>
+
+<br />
+
+<a id="SELECTION" />
+<h3>Selection</h3>
+<p>When multiple productions are present one is chosen at random.</p>
+<pre>
+NUMBER: '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+</pre>
+
+<br />
+
+<a id="GROUPING" />
+<h3>Grouping</h3>
+<p></p>
+<pre>
+GRP: ('A'|'B') ('C'|'D');
+</pre>
+<p>Possible values are 'AC', 'AD', 'BC', or 'BD'.</p>
+
+<br />
+
+<a id="RANGES" />
+<h3>Ranges</h3>
+<p></p>
+<pre>
+NUM1: ('0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|'8'|'9'){3};
+NUM2: ('0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|'8'|'9'){1,5};
+</pre>
+<p>NUM1 will generate a 3-digit number while NUM2 will generate a number of random length between 1 and 5 digits.</p>
+
+<br />
+
+<a id="SLICING" />
+<h3>Slicing</h3>
+<p>A sub-string of a production can be referenced using indices.</p>
+<pre>
+SLICE1: "0123456789" [:];    // 0123456789
+SLICE2: "0123456789" [4];    // 4
+SLICE3: "0123456789" [:4];   // 0123
+SLICE4: "0123456789" [4:];   // 456789
+SLICE5: "0123456789" [2:8];  // 234567
+SLICE6: "0123456789" [-4];   // 6
+SLICE7: "0123456789" [-4:];  // 6789
+SLICE8: "0123456789" [:-4];  // 012345
+SLICE9: "0123456789" [2:-2]; // 234567
+</pre>
+<p>The output of each production is documented in the comment proceeding it.</p>
+
+<br />
+
+<a id="INLINEPYTHON" />
+<h3>Inline Python</h3>
+<p></p>
+<pre>&lt;%pre
+    import base64
+%&gt;
+
+NT: %base64.b64encode('string');
+</pre>
+<p></p>
+
+<br />
+
+<a id="NONTERMINALS" />
+<h3>Non-Terminals</h3>
+<p></p>
+<pre>
+NT1: "The value of NT2 is " NT2;
+NT2: "substitution";
+</pre>
+
+<br />
+
+<a id="SEMANTICACTIONS" />
+<h3>Semantic Actions</h3>
+<p>$$</p>
+<pre>
+PSA1: PSA2 &lt;% var = $$ %&gt;;
+PSA2: "one" | "two";
+</pre>
+<p>In this example the Python variable <b>var</b> will contain either 'one' or 'two' for future use.</p>
+
+<br />
+
+<a id="VARIABLENONTERMINALS" />
+<h3>Variable Non-Terminals</h3>
+<p>$*</p>
+<pre>
+NT1: $NT2;
+
+$NT2:
+  "I WILL BE SUBSTITUTED INTO NT1 IN LOWERCASE"
+  &lt;%
+    $* = $$.lower()
+  %&gt;
+  ;
+</pre>
+
+<br />
+
+<a id="BACKREFERENCE" />
+<h3>Back Reference</h3>
+<p></p>
+<pre>
+BR: "A" | "B";
+NT: BR \BR;
+</pre>
+<pre>
+$BR: ("a"|"b") &lt;% $* = $$.upper() %&gt;;
+NT: $BR \$BR;
+</pre>
+<p>NT will generate the string 'AA' or 'BB' but not 'AB' or 'BA'.</p>
+
+
+</body>
+</html>

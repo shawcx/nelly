@@ -1,0 +1,32 @@
+
+<%pre
+    import sys
+    import os
+    import random
+    import time
+%>
+
+$NOW: <% $* = int(time.time()) %>;
+
+$None:  <% $* = None  %>;
+$True:  <% $* = True  %>;
+$False: <% $* = False %>;
+
+NULL: '\x00';
+SP:   ' ';
+CR:   '\r';
+LF:   '\n';
+CRLF: '\r\n';
+TAB:  '\t';
+
+UPPER: %chr(%random.randint(0x41,0x5A));
+LOWER: %chr(%random.randint(0x61,0x7A));
+
+WORD: (UPPER | LOWER){3,10};
+
+NUMBER_0_9: %chr(%random.randint(0x30,0x39));
+NUMBER_1_9: %chr(%random.randint(0x31,0x39));
+
+RANDCHAR: %chr(%random.randint(0x20,0x7F));
+RANDBYTE: %chr(%random.randint(0x00,0xFF));
+RANDINT:  %random.randint();

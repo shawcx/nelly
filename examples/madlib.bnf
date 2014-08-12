@@ -1,0 +1,24 @@
+include 'constants.bnf'
+
+START(start):
+    'Dear' SP WORD ',' CRLF
+    CRLF
+    TAB PARAGRAPH CRLF
+    CRLF
+    TAB{5} 'Sincerely,' CRLF
+    TAB{5} WORD
+    ;
+
+PARAGRAPH: (SENTENCE SP SP){2,4} SENTENCE;
+
+SENTENCE: SENTENCE_INNER PUNCTUATION;
+
+SENTENCE_INNER(corrupt): (WORD SP){5,20} WORD;
+
+WORD: "hello" | "cat" | "yellow" | "hop-a-long";
+
+PUNCTUATION: "!" | "?" | ".";
+
+<%post
+    print $$
+%>

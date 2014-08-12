@@ -1,0 +1,54 @@
+
+include 'constants.bnf'
+
+<%pre
+    import socket
+    import random
+    import struct
+    import logging
+
+    import beaker
+
+    host = $host
+
+    try:
+        skt
+    except NameError:
+        try:
+            skt = socket.socket()
+            skt.connect(($host,80))
+        except socket.error, e:
+            logging.error('%s', e)
+            exit()
+%>
+
+$SEND_HTTP_REQUEST(start):
+    REQUEST <%
+        printf.blue('%s', $$)
+        writeln.black('%s\n', '-' * 80)
+
+        skt.send($$)
+        $* = skt.recv(1500)
+
+        headers,body = $*.split('\r\n\r\n', 1)
+
+        writeln.green('%s\n', headers)
+        writeln.white('%s', body)
+    %>;
+
+REQUEST:
+    "GET " URL " HTTP/1.1" CRLF
+    "Host: " &host CRLF
+    HEADER {0,10}
+    CRLF
+    ;
+
+URL: '/' ('index.' EXTENSION | WORD '.' EXTENSION);
+
+EXTENSION: WORD[:3];
+
+HEADER: HEADERS ": " WORD CRLF;
+
+HEADERS:
+    'Content-Type' | 'Date' | 'Content-Encoding'
+    ;
