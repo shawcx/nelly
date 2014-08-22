@@ -6,10 +6,10 @@ class Packer(type):
 		def pack(self):
 			return struct.pack(self.fmt, self)
 	
-	def __new__(self, supertype, pack):
+	def __new__(cls, supertype, pack):
 		dict = {'fmt': pack}
 		name = 'Packer' + supertype.__name__
-		return type.__new__(self, name, (supertype,Packer.Pack), dict)
+		return type.__new__(cls, name, (supertype,Packer.Pack), dict)
 
 	def __init__(self, supertype, pack):
 		return type.__init__(self, supertype)
