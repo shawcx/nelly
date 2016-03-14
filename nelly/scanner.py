@@ -3,8 +3,6 @@ import re
 import collections
 import logging
 
-import beaker
-
 from .types import Tokens
 
 _functions = {}
@@ -53,7 +51,7 @@ class Scanner(object):
             try:
                 fn(*args)
             except SyntaxError as e:
-                raise beaker.error('Syntax error "%s" at %d, Column %d', e, self.linenumber, self.column)
+                raise SyntaxError('"%s" at %d, Column %d', e, self.linenumber, self.column)
 
             group = match.group()
             if '\n' in group:

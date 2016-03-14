@@ -2,7 +2,7 @@ include "constants.bnf"
 
 <%pre
     import base64
-    import beaker
+    import _.py
 %>
 
 DEMO(start)
@@ -16,5 +16,5 @@ $B2: \INPUT <% $* = base64.b64encode($$) %>;
 INPUT: ("A"|"a"){5,10};
 
 <%post
-    hexdump($$)
+    _.hexdump($$)
 %>

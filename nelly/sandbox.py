@@ -4,8 +4,6 @@ import os
 import random
 import logging
 
-import beaker
-
 from .types import *
 
 class Sandbox:
@@ -48,7 +46,7 @@ class Sandbox:
         try:
             entry_point = self.choose(self.program.start)
         except ValueError:
-            raise beaker.error('No entry points')
+            raise ValueError('No entry points')
 
         #logging.debug('Entry point: "%s"', entry_point)
 
@@ -108,7 +106,7 @@ class Sandbox:
         try:
             nonterminal = self.program.nonterminals[name]
         except KeyError as e:
-            raise beaker.error('Unknown nonterminal: "%s"', name)
+            raise AttributeError('Unknown nonterminal: "%s"', name)
 
         expression = self.choose(nonterminal.expressions)
 
@@ -120,7 +118,7 @@ class Sandbox:
         try:
             varterminal = self.program.nonterminals[name]
         except KeyError as e:
-            raise beaker.error('Unknown varterminal: "%s"', name)
+            raise AttributeError('Unknown varterminal: "%s"', name)
 
         expression = self.choose(varterminal.expressions)
 
@@ -159,7 +157,7 @@ class Sandbox:
             exec(pycode, self.globals)
         except KeyError as e:
             if e.message[0] == '$':
-                raise beaker.error('Undeclared variable "%s"', e.message[1:])
+                raise AttributeError('Undeclared variable "%s"', e.message[1:])
             raise
         except SystemExit:
             pass

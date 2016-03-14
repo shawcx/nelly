@@ -12,43 +12,43 @@ path = os.path.join(path, '..')
 path = os.path.abspath(path)
 sys.path.insert(0, path)
 
-import beaker
 import nelly
 
-beaker.argparser.add_argument('grammar',
+argparser = argparse.ArgumentParser()
+
+argparser.add_argument('grammar',
     nargs='?', type=argparse.FileType('r'), default=sys.stdin,
     help='Input file')
 
-beaker.argparser.add_argument('--count', '-c',
+argparser.add_argument('--count', '-c',
     type=int, default=1,
-    help='Include path')
+    help='Number of times to run')
 
-beaker.argparser.add_argument('--include', '-I',
+argparser.add_argument('--include', '-I',
     action='append',
     help='Include path')
 
-beaker.argparser.add_argument('--vars', '-v',
+argparser.add_argument('--vars', '-v',
     action='append',
     help='Variables to set')
 
-def main():
-    beaker.config.load()
-    # TODO: catch exception for prettier printing
+args = argparser.parse_args()
 
-    includes = beaker.args.include or []
+def main():
+    includes = args.include or []
 
     variables = {}
-    if beaker.args.vars:
-        for var in beaker.args.vars:
+    if args.vars:
+        for var in args.vars:
             name,value = var.split('=', 1)
             name = '$'+name
             variables[name] = value
 
-    if beaker.args.grammar == sys.stdin:
+    if args.grammar == sys.stdin:
         logging.info('Reading from stdin')
 
     try:
-        grammar = beaker.args.grammar.read()
+        grammar = args.grammar.read()
     except KeyboardInterrupt:
         return -1;
 
@@ -66,7 +66,7 @@ def main():
     count = 0
     t1 = time.time()
     try:
-        while not beaker.args.count or count < beaker.args.count:
+        while not args.count or count < args.count:
             sandbox = nelly.Sandbox(variables)
             sandbox.Execute(program)
             count += 1
@@ -83,6 +83,6 @@ def main():
 if '__main__' == __name__:
     try:
         sys.exit(main())
-    except beaker.error as e:
+    except Exception as e:
         logging.error('%s', e)
         sys.exit(-1)

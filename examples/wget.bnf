@@ -7,8 +7,6 @@ include 'constants.bnf'
     import struct
     import logging
 
-    import beaker
-
     host = $host
 
     try:

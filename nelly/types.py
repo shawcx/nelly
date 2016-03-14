@@ -54,10 +54,10 @@ class Tokens(list):
         try:
             return self.pop(0)
         except IndexError:
-            raise beaker.error('No more tokens')
+            raise SyntaxError('No more tokens')
 
     def Peek(self):
         try:
             return self.__getitem__(0)
         except IndexError:
-            raise beaker.error('No more tokens')
+            raise SyntaxError('No more tokens')

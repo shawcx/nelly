@@ -5,7 +5,6 @@ import re
 import marshal
 import logging
 
-import beaker
 import nelly
 
 from .scanner import Scanner
@@ -56,11 +55,11 @@ class Parser(object):
                 elif '<%post' == value:
                     self.program.postscript.append(self._python_code('post'))
                 else:
-                    raise beaker.error('Please specify pre or post in code section')
+                    raise ValueError('Please specify pre or post in code section')
             elif 'start_comment' == token:
                 self._comment()
             else:
-                raise beaker.error('Unhandled %s %s at %d:%d', token, repr(value), line, col)
+                raise SyntaxError('Unhandled %s %s at %d:%d', token, repr(value), line, col)
 
         self.tokens_stack.pop()
 
@@ -81,12 +80,12 @@ class Parser(object):
                 elif 'option' == token:
                     nonterminal.options.append(value);
                 else:
-                    raise beaker.error('Unknown option: %s %s', token, value)
+                    raise SyntaxError('Unknown option: %s %s', token, value)
 
             (token,value,line,col) = self.tokens.Next()
 
         if 'colon' != token:
-            raise beaker.error('Parse error, missing colon at line %d, column %d', line, col)
+            raise SyntaxError('Parse error, missing colon at line %d, column %d', line, col)
 
         self._expressions('pipe', 'semicolon', nonterminal)
 
@@ -130,18 +129,18 @@ class Parser(object):
                 try:
                     expression.Operation(Types.SLICE, self._slice())
                 except IndexError:
-                    raise beaker.error('Applying slice to nothing at line %d, column %d', line, col)
+                    raise SyntaxError('Applying slice to nothing at line %d, column %d', line, col)
             elif 'lcurley' == token:
                 try:
                     expression.Operation(Types.RANGE, self._range())
                 except IndexError:
-                    raise beaker.error('Applying range to nothing at line %d, column %d', line, col)
+                    raise SyntaxError('Applying range to nothing at line %d, column %d', line, col)
             elif 'langle' == token:
                 expression.Operation(Types.WEIGHT, self._weight())
             elif 'empty' == token:
                 pass
             else:
-                raise beaker.error('Unhandled token "%s" at line %d, column %d', token, line, col)
+                raise SyntaxError('Unhandled token "%s" at line %d, column %d', token, line, col)
 
     def _quote(self):
         # this will always be the quoted value
@@ -166,18 +165,18 @@ class Parser(object):
 
         if 'rbracket' == token:
             if False == start:
-                raise beaker.error('Empty slice at line %d, column %d', line, col)
+                raise SyntaxError('Empty slice at line %d, column %d', line, col)
             return (front,front+1)
 
         elif 'colon' != token:
-            raise beaker.error('Missing colon at line %d, column %d', line, col)
+            raise SyntaxError('Missing colon at line %d, column %d', line, col)
 
         (token,value,line,col) = self.tokens.Next()
         if 'constant' == token:
             back = value
             (token,value,line,col) = self.tokens.Next()
         elif 'rbracket' != token:
-            raise beaker.error('Missing ] at line %d, column %d', line, col)
+            raise SyntaxError('Missing ] at line %d, column %d', line, col)
 
         return (front,back)
 
@@ -190,7 +189,7 @@ class Parser(object):
 
         (token,value,line,col) = self.tokens.Next()
         if 'constant' != token:
-            raise beaker.error('Missing range at line %d, column %d', line, col)
+            raise SyntaxError('Missing range at line %d, column %d', line, col)
 
         lower = value
         upper = value
@@ -199,17 +198,17 @@ class Parser(object):
         if 'rcurley' == token:
             return (lower,upper)
         elif 'comma' != token:
-            raise beaker.error('Missing comma at line %d, column %d', line, col)
+            raise SyntaxError('Missing comma at line %d, column %d', line, col)
 
         (token,value,line,col) = self.tokens.Next()
         if 'constant' == token:
             upper = value
         else:
-            raise beaker.error('Missing range at line %d, column %d', line, col)
+            raise SyntaxError('Missing range at line %d, column %d', line, col)
 
         (token,value,line,col) = self.tokens.Next()
         if 'rcurley' != token:
-            raise beaker.error('Missing } at line %d, column %d', line, col)
+            raise SyntaxError('Missing } at line %d, column %d', line, col)
 
         if lower > upper:
             lower,upper = upper,lower
@@ -219,10 +218,10 @@ class Parser(object):
     def _weight(self):
         (token,value,line,col) = self.tokens.Next()
         if 'constant' != token:
-            raise beaker.error('Missing weight at line %d, column %d', line, col)
+            raise SyntaxError('Missing weight at line %d, column %d', line, col)
         (token,ignore,line,col) = self.tokens.Next()
         if 'rangle' != token:
-            raise beaker.error('Missing > at %d, column %d', line, col)
+            raise SyntaxError('Missing > at %d, column %d', line, col)
 
         return value
 
@@ -240,7 +239,7 @@ class Parser(object):
 
         # check indentation
         if [s for s in values if not s.startswith(ws)]:
-            raise beaker.error('Bad indentation in code block at line %d, column %d', line, col)
+            raise SyntaxError('Bad indentation in code block at line %d, column %d', line, col)
 
         # strip and rejoin the code
         codeblock = '\n'.join(s[len(ws):] for s in values)
@@ -251,7 +250,7 @@ class Parser(object):
         try:
             return marshal.dumps(compile(codeblock, '<'+name+'>', 'exec'))
         except SyntaxError as e:
-            raise beaker.error('%d: %s: %s', e.lineno, e.msg, repr(e.text))
+            raise SyntaxError('%d: %s: %s', e.lineno, e.msg, repr(e.text))
 
     #
     # Include other BNF files
@@ -261,7 +260,7 @@ class Parser(object):
 
         # file names are quoted
         if token not in ['start_single_quote', 'start_double_quote', 'start_triple_quote']:
-            raise beaker.error('quoted file path expected')
+            raise SyntaxError('quoted file path expected')
 
         # get the quoted value
         path = self._quote()
@@ -278,7 +277,7 @@ class Parser(object):
 
         # if no file was found, throw an error
         if None == content:
-            raise beaker.error('Could not load file %s', repr(path))
+            raise IOError('Could not load file %s', repr(path))
 
         # ignore empty file
         if not content:

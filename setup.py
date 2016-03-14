@@ -7,7 +7,7 @@ from distutils.core import setup
 
 setup(
     name = 'nelly',
-    version = '0.1',
+    version = '0.3',
     author = 'Matthew Oertle',
     author_email = 'moertle@gmail.com',
     description = 'A grammar-based generator',

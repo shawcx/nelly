@@ -3,6 +3,8 @@
     import time
     import logging
 
+    import _.py
+
     try:
         import OpenSSL
     except ImportError:
@@ -30,7 +32,7 @@
 
         priv_key = OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_ASN1, pkey)
 
-        hexdump(priv_key)
+        _.hexdump(priv_key)
 
 %>
 
