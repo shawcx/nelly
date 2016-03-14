@@ -18,13 +18,6 @@ sys.path.insert(0, path)
 
 import nelly
 
-
-logging.basicConfig(
-    format  = '%(asctime)s %(levelname)-8s %(message)s',
-    datefmt = '%Y-%m-%d %H:%M:%S',
-    level   = logging.INFO
-    )
-
 argparser = argparse.ArgumentParser()
 
 argparser.add_argument('grammar',
@@ -35,7 +28,7 @@ argparser.add_argument('--count', '-c',
     type=int, default=1,
     help='Number of times to run')
 
-argparser.add_argument('--include', '-I',
+argparser.add_argument('--include', '-i',
     action='append',
     help='Include path')
 
@@ -43,7 +36,17 @@ argparser.add_argument('--vars', '-v',
     action='append',
     help='Variables to set')
 
+argparser.add_argument('--debug', '-D',
+    action='store_true',
+    help='Enable debug logging')
+
 args = argparser.parse_args()
+
+logging.basicConfig(
+    format  = '%(asctime)s %(levelname)-8s %(message)s',
+    datefmt = '%Y-%m-%d %H:%M:%S',
+    level   = logging.DEBUG if args.debug else logging.INFO
+    )
 
 def main():
     includes = args.include or []
