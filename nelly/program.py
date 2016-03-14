@@ -1,3 +1,6 @@
+#
+# (c) 2008-2016 Matthew Oertle
+#
 
 import marshal
 
