@@ -2,6 +2,9 @@
 # (c) 2008-2016 Matthew Oertle
 #
 
+import nelly
+
+
 class Types(object):
     # Statements
     TERMINAL      = 0
@@ -60,10 +63,10 @@ class Tokens(list):
         try:
             return self.pop(0)
         except IndexError:
-            raise SyntaxError('No more tokens')
+            raise nelly.error('No more tokens')
 
     def Peek(self):
         try:
             return self.__getitem__(0)
         except IndexError:
-            raise SyntaxError('No more tokens')
+            raise nelly.error('No more tokens')

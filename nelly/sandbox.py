@@ -7,6 +7,8 @@ import os
 import random
 import logging
 
+import nelly
+
 from .types import *
 
 
@@ -50,7 +52,7 @@ class Sandbox:
         try:
             entry_point = self.choose(self.program.start)
         except ValueError:
-            raise ValueError('No entry points')
+            raise nelly.error('No entry points')
 
         #logging.debug('Entry point: "%s"', entry_point)
 
@@ -110,7 +112,7 @@ class Sandbox:
         try:
             nonterminal = self.program.nonterminals[name]
         except KeyError as e:
-            raise AttributeError('Unknown nonterminal: "%s"', name)
+            raise nelly.error('Unknown nonterminal: "%s"', name)
 
         expression = self.choose(nonterminal.expressions)
 
@@ -122,7 +124,7 @@ class Sandbox:
         try:
             varterminal = self.program.nonterminals[name]
         except KeyError as e:
-            raise AttributeError('Unknown varterminal: "%s"', name)
+            raise nelly.error('Unknown varterminal: "%s"', name)
 
         expression = self.choose(varterminal.expressions)
 
@@ -161,7 +163,7 @@ class Sandbox:
             exec(pycode, self.globals)
         except KeyError as e:
             if e.message[0] == '$':
-                raise AttributeError('Undeclared variable "%s"' % e.message[1:])
+                raise nelly.error('Undeclared variable "%s"', e.message[1:])
             raise
         except SystemExit:
             pass
