@@ -6,6 +6,7 @@ import sys
 import inspect
 import struct
 
+
 def Pack(basetype, fmt):
     '''
 Pack(type, fmt) -> type

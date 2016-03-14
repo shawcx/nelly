@@ -1,3 +1,6 @@
+
+// Usage: nelly -i examples -v path=. examples/tornado.bnf
+
 include 'html.bnf'
 
 <%pre

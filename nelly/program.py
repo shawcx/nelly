@@ -9,6 +9,7 @@ try:
 except ImportError:
     import pickle
 
+
 class Program:
     def __init__(self):
         self.nonterminals = {}

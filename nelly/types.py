@@ -18,6 +18,7 @@ class Types(object):
     MEMBER = 2
     WEIGHT = 3
 
+
 class Nonterminal(object):
     def __init__(self, _type, name=''):
         self.type        = _type
@@ -25,12 +26,12 @@ class Nonterminal(object):
         self.options     = []
         self.expressions = []
 
+
 class Expression(object):
     def __init__(self, location):
-        self.location = location
-        self.code = None
+        self.location   = location
+        self.code       = None
         self.statements = []
-        #self.operations = []
 
     def Statement(self, *args):
         self.statements.append(Statement(*args))
@@ -38,12 +39,14 @@ class Expression(object):
     def Operation(self, *args):
         self.statements[-1].operations.append(args)
 
+
 class Statement(object):
     def __init__(self, _type, name, *args):
-        self.type = _type
-        self.name = name
-        self.args = args
+        self.type       = _type
+        self.name       = name
+        self.args       = args
         self.operations = []
+
 
 class Tokens(list):
     def __init__(self, *args):
@@ -51,7 +54,7 @@ class Tokens(list):
         self.locations = []
 
     def Add(self, token, value, line, col):
-        list.append(self, (token, value, line, col))
+        super(Tokens, self).append((token, value, line, col))
 
     def Next(self):
         try:

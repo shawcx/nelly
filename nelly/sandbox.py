@@ -9,6 +9,7 @@ import logging
 
 from .types import *
 
+
 class Sandbox:
     def __init__(self, variables):
         self.lookup = dict(enumerate((

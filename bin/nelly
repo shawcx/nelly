@@ -73,7 +73,7 @@ def main():
     logging.debug('Serializing program')
     package = parser.program.Save()
 
-    logging.debug('Loading Program')
+    logging.debug('Loading program')
     program = nelly.Program.Load(package)
 
     logging.debug('Executing program')

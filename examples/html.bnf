@@ -1,5 +1,7 @@
 include "constants.bnf"
 
+// Usage: nelly -v path=. examples/html.bnf
+
 <%pre
     import base64
     $path

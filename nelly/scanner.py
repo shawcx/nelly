@@ -10,12 +10,14 @@ from .types import Tokens
 
 _functions = {}
 
+
 def action(fn):
     if hasattr(fn, 'func_name'):
         _functions[fn.func_name] = None
     else:
         _functions[fn.__name__] = None
     return fn
+
 
 class Scanner(object):
     def __init__(self, path):
