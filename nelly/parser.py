@@ -277,7 +277,7 @@ class Parser(object):
 
         # if no file was found, throw an error
         if None == content:
-            raise IOError('Could not load file %s', repr(path))
+            raise ValueError('Could not load file %s' % repr(path))
 
         # ignore empty file
         if not content:

@@ -31,14 +31,14 @@ $ENCODER
     ;
 
 <%post
-    sFullPath = os.path.join($path, 'test.html')
+    fullPath = os.path.join($path, 'test.html')
 
-    print sFullPath
+    print fullPath
     print
     print $$
     print
 
-    #fp = open(sFullPath, 'wb')
+    #fp = open(fullPath, 'wb')
     #fp.write($$)
     #fp.close()
 %>

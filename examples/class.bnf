@@ -8,8 +8,8 @@ include "constants.bnf"
         def __str__(self):
             return 'Class Nelly: <%s>' % self.sData
 
-        def some_function(self, sAppend):
-            return self.sData.lower() + ' ' + sAppend
+        def some_function(self, append):
+            return self.sData.lower() + ' ' + append
 %>
 
 START(start)

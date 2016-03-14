@@ -157,7 +157,7 @@ class Sandbox:
             exec(pycode, self.globals)
         except KeyError as e:
             if e.message[0] == '$':
-                raise AttributeError('Undeclared variable "%s"', e.message[1:])
+                raise AttributeError('Undeclared variable "%s"' % e.message[1:])
             raise
         except SystemExit:
             pass

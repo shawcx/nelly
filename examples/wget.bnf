@@ -22,16 +22,16 @@ include 'constants.bnf'
 
 $SEND_HTTP_REQUEST(start):
     REQUEST <%
-        printf.blue('%s', $$)
-        writeln.black('%s\n', '-' * 80)
+        print $$
+        print
 
         skt.send($$)
         $* = skt.recv(1500)
 
         headers,body = $*.split('\r\n\r\n', 1)
 
-        writeln.green('%s\n', headers)
-        writeln.white('%s', body)
+        print '%s\n' % headers
+        print '%s' % body
     %>;
 
 REQUEST:
