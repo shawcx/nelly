@@ -56,6 +56,10 @@ def main():
 
     if args.grammar == sys.stdin:
         logging.info('Reading from stdin')
+    else:
+        path = os.path.abspath(args.grammar.name)
+        path = os.path.dirname(path)
+        sys.path.insert(0, path)
 
     try:
         grammar = args.grammar.read()
@@ -80,8 +84,6 @@ def main():
             sandbox = nelly.Sandbox(variables)
             sandbox.Execute(program)
             count += 1
-            #if not (count & 0xff):
-            #    logging.debug('Tests/sec: %.2f', count / (time.time() - t1))
     except KeyboardInterrupt:
         pass
     t2 = time.time()
