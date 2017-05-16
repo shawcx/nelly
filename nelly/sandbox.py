@@ -2,6 +2,8 @@
 # (c) 2008-2016 Matthew Oertle
 #
 
+from __future__ import print_function
+
 import sys
 import os
 import random
@@ -26,14 +28,14 @@ class Sandbox:
 
         self.globals = {}
         self.globals['_g_var'] = {
-            '$_Nonterminal'   : self.Nonterminal,
-            '$_Varterminal'   : self.Varterminal,
-            '$_Backreference' : self.Backreference,
+            '$NT' : self.Nonterminal,
+            '$VT' : self.Varterminal,
+            '$BR' : self.Backreference,
             }
         self.globals['_g_var'].update(variables)
 
-        self.backreference = {}
-        self.record = []
+        self.backref = {}
+        self.record  = []
 
     def choose(self, items, pick=None):
         if None is pick:
@@ -49,7 +51,7 @@ class Sandbox:
         for pycode in self.program.preamble:
             ok = self.__ExecPython(pycode)
             if ok == False:
-                print('Terminating on preamble')
+                logging.error('Terminating on preamble')
                 return
 
         try:
@@ -57,14 +59,12 @@ class Sandbox:
         except ValueError:
             raise nelly.error('No entry points')
 
-        #logging.debug('Entry point: "%s"', entry_point)
-
         self.Nonterminal(entry_point)
 
         for pycode in self.program.postscript:
             ok = self.__ExecPython(pycode)
             if ok == False:
-                print('Terminating on postscript')
+                logging.error('Terminating on postscript')
                 return
 
     def Expression(self, expression):
@@ -78,12 +78,10 @@ class Sandbox:
                 current = None
 
                 for operation in statement.operations:
-
                     if operation[0] == Types.SLICE:
                         if current is None:
                             current = function(statement.name, *statement.args)
                         current = current[slice(*operation[1])]
-
                     elif operation[0] == Types.RANGE:
                         count = random.randint(*operation[1])
                         if current is None:
@@ -95,8 +93,8 @@ class Sandbox:
                                     current += function(statement.name, *statement.args)
                         else:
                             current = current * count
-
                     elif operation[0] == Types.WEIGHT:
+                        print('weight...', current, statement.name, statement.args)
                         pass
 
             if isinstance(current, str):
@@ -120,10 +118,8 @@ class Sandbox:
         except KeyError as e:
             raise nelly.error('Unknown nonterminal: "%s"', name)
 
-        expression = self.choose(nonterminal.expressions)
-
-        retval = self.Expression(expression)
-        self.backreference[name] = retval
+        retval = self.Expression(self.choose(nonterminal.expressions))
+        self.backref[name] = retval
         return retval
 
     def Varterminal(self, name):
@@ -132,32 +128,25 @@ class Sandbox:
         except KeyError as e:
             raise nelly.error('Unknown varterminal: "%s"', name)
 
-        expression = self.choose(varterminal.expressions)
-
-        self.Expression(expression)
-
-        self.backreference[name] = self.globals['_g_var']['$*']
-
+        self.Expression(self.choose(varterminal.expressions))
+        self.backref[name] = self.globals['_g_var']['$*']
         return self.globals['_g_var']['$*']
 
     def Terminal(self, value):
         return value
 
     def Backreference(self, name):
-        return self.backreference.get(name[1:], None)
+        return self.backref.get(name[1:], None)
 
     def Anonymous(self, anonterminal):
-        expression = self.choose(anonterminal.expressions)
-        retval = self.Expression(expression)
+        retval = self.Expression(self.choose(anonterminal.expressions))
         return retval
 
     def Function(self, function, arguments):
         fn = eval(function[:-1], self.globals)
         args = []
-
         for expression in arguments.expressions:
             args.append(self.Expression(expression))
-
         retval = fn(*args)
         return retval
 
@@ -168,8 +157,9 @@ class Sandbox:
         try:
             exec(pycode, self.globals)
         except KeyError as e:
-            if e.message[0] == '$':
-                raise nelly.error('Undeclared variable "%s"', e.message[1:])
+            name, = e.args
+            if name[0] == '$':
+                raise nelly.error('Undeclared variable "%s"', name[1:])
             raise
         except SystemExit:
             return False

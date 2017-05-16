@@ -10,7 +10,7 @@ except ImportError:
     import pickle
 
 
-class Program:
+class Program(object):
     def __init__(self):
         self.nonterminals = {}
         self.preamble     = []

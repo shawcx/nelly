@@ -2,6 +2,8 @@
 # (c) 2008-2016 Matthew Oertle
 #
 
+from __future__ import print_function
+
 import sys
 import os
 import re
@@ -69,11 +71,13 @@ class Parser(object):
 
 
     def _nonterminal(self, _type, name):
+        # create a new container and add it to the program
         nonterminal = Nonterminal(_type, name)
         self.program.nonterminals[name] = nonterminal
 
         (token,value,line,col) = self.tokens.Next()
 
+        # parse any optional arguments for the non-terminal
         if 'lparen' == token:
             while True:
                 (token,value,line,col) = self.tokens.Next()
@@ -91,6 +95,7 @@ class Parser(object):
         if 'colon' != token:
             raise nelly.error('Parse error, missing colon at line %d, column %d', line, col)
 
+        # parse zero or more expressions until a semicolon is found
         self._expressions('pipe', 'semicolon', nonterminal)
 
     def _expressions(self, delimiter, sentinel, nonterminal):
@@ -228,7 +233,6 @@ class Parser(object):
             raise nelly.error('Missing > at %d, column %d', line, col)
 
         return value
-
 
     #
     # Compile the Python into a code object
