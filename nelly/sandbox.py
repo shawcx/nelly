@@ -47,7 +47,10 @@ class Sandbox:
         self.program = program
 
         for pycode in self.program.preamble:
-            self.__ExecPython(pycode)
+            ok = self.__ExecPython(pycode)
+            if ok == False:
+                print('Terminating on preamble')
+                return
 
         try:
             entry_point = self.choose(self.program.start)
@@ -59,7 +62,10 @@ class Sandbox:
         self.Nonterminal(entry_point)
 
         for pycode in self.program.postscript:
-            self.__ExecPython(pycode)
+            ok = self.__ExecPython(pycode)
+            if ok == False:
+                print('Terminating on postscript')
+                return
 
     def Expression(self, expression):
         retval = ''
@@ -166,4 +172,4 @@ class Sandbox:
                 raise nelly.error('Undeclared variable "%s"', e.message[1:])
             raise
         except SystemExit:
-            pass
+            return False
