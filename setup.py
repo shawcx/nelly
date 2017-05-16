@@ -27,4 +27,12 @@ setup(
     scripts = [
         'bin/nelly',
         ],
+    classifiers=[
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Topic :: Software Development :: Testing',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        ]
     )
