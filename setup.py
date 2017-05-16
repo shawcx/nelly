@@ -5,12 +5,15 @@ import os
 
 from distutils.core import setup
 
+exec(compile(open('nelly/version.py').read(),'version.py','exec'))
+
 setup(
-    name = 'nelly',
-    version = '0.4.2',
-    author = 'Matthew Oertle',
-    author_email = 'moertle@gmail.com',
-    description = 'A grammar-based generator',
+    name             = 'nelly',
+    author           = __author__,
+    author_email     = __email__,
+    version          = __version__,
+    license          = __license__,
+    description      = 'Python Test Case Generator',
     long_description = open('README.rst').read(),
     packages = [
         'nelly',
@@ -24,4 +27,4 @@ setup(
     scripts = [
         'bin/nelly',
         ],
-)
+    )

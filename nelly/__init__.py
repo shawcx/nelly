@@ -14,6 +14,8 @@ class error(Exception):
     def __str__(self):
         return self.str
 
+from . import version
+
 from .program  import Program
 from .parser   import Parser
 from .sandbox  import Sandbox
