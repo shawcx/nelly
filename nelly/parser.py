@@ -3,6 +3,7 @@
 #
 
 from __future__ import print_function
+from __future__ import division
 
 import sys
 import os
@@ -69,7 +70,6 @@ class Parser(object):
 
         self.tokens_stack.pop()
 
-
     def _nonterminal(self, _type, name):
         # create a new container and add it to the program
         nonterminal = Nonterminal(_type, name)
@@ -89,7 +89,6 @@ class Parser(object):
                     nonterminal.options.append(value);
                 else:
                     raise nelly.error('Unknown option: %s %s', token, value)
-
             (token,value,line,col) = self.tokens.Next()
 
         if 'colon' != token:
@@ -97,6 +96,21 @@ class Parser(object):
 
         # parse zero or more expressions until a semicolon is found
         self._expressions('pipe', 'semicolon', nonterminal)
+
+        weights = [v.weight for v in nonterminal.expressions if v.weight]
+        total = sum(weights)
+        if total:
+            avg = total / len(weights)
+        else:
+            avg = 100.0 / len(nonterminal.expressions)
+
+        total = 0
+        for v in nonterminal.expressions:
+            v.weight = avg if v.weight is None else float(v.weight)
+            total += v.weight
+
+        for v in nonterminal.expressions:
+            v.weight = v.weight / total
 
     def _expressions(self, delimiter, sentinel, nonterminal):
         (token,value,line,col) = self.tokens.Peek()
@@ -145,7 +159,7 @@ class Parser(object):
                 except IndexError:
                     raise nelly.error('Applying range to nothing at line %d, column %d', line, col)
             elif 'langle' == token:
-                expression.Operation(Types.WEIGHT, self._weight())
+                expression.Weight(self._weight())
             elif 'empty' == token:
                 pass
             else:

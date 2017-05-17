@@ -37,13 +37,22 @@ class Sandbox:
         self.backref = {}
         self.record  = []
 
-    def choose(self, items, pick=None):
-        if None is pick:
+    def choose(self, items, noweight=False):
+        if not noweight:
+            r = random.random()
+            choice = 0
+            for i in items:
+                print(r, i.weight)
+                if r < i.weight:
+                    break
+                r -= i.weight
+                choice += 1
+            print()
+            self.record.append(choice)
+        else:
             choice = random.randrange(len(items))
             self.record.append(choice)
-            return items[choice]
-        else:
-            return items[pick]
+        return items[choice]
 
     def Execute(self, program):
         self.program = program
@@ -55,11 +64,11 @@ class Sandbox:
                 return
 
         try:
-            entry_point = self.choose(self.program.start)
+            name = self.choose(self.program.start, True)
         except ValueError:
             raise nelly.error('No entry points')
 
-        self.Nonterminal(entry_point)
+        self.Nonterminal(name)
 
         for pycode in self.program.postscript:
             ok = self.__ExecPython(pycode)
@@ -93,9 +102,6 @@ class Sandbox:
                                     current += function(statement.name, *statement.args)
                         else:
                             current = current * count
-                    elif operation[0] == Types.WEIGHT:
-                        print('weight...', current, statement.name, statement.args)
-                        pass
 
             if isinstance(current, str):
                 retval += current

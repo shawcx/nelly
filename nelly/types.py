@@ -28,6 +28,7 @@ class Nonterminal(object):
         self.name        = name
         self.options     = []
         self.expressions = []
+        self.weight      = None
 
 
 class Expression(object):
@@ -35,12 +36,16 @@ class Expression(object):
         self.location   = location
         self.code       = None
         self.statements = []
+        self.weight     = None
 
     def Statement(self, *args):
         self.statements.append(Statement(*args))
 
     def Operation(self, *args):
         self.statements[-1].operations.append(args)
+
+    def Weight(self, weight):
+        self.weight = weight
 
 
 class Statement(object):
