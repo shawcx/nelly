@@ -29,6 +29,6 @@ RANDOM
     ;
 
 <%post
-    print $$
+    print($$)
 %>
 

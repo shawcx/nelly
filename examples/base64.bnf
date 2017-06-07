@@ -2,19 +2,18 @@ include "constants.bnf"
 
 <%pre
     import base64
-    import _.py
 %>
 
 DEMO(start)
-    : INPUT "\n" B1 "\n" $B2
+    : INPUT "\n" %str(B1) "\n" $B2
     ;
 
-B1: %base64.b64encode(\INPUT);
+B1: %base64.b64encode(%bytes(\INPUT,'utf-8'));
 
-$B2: \INPUT <% $* = base64.b64encode($$) %>;
+$B2: \INPUT <% $* = base64.b64encode($$.encode('utf-8')) %>;
 
 INPUT: ("A"|"a"){5,10};
 
 <%post
-    _.hexdump($$)
+    print($$.decode('utf-8'))
 %>

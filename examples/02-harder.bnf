@@ -23,5 +23,5 @@ $MEMBER: $CLASS <% $* = $$().member %>;
 EXAMPLE(start): %str(MULTIPLY) ' ' $MEMBER ' @ ' %time.strftime('%Y-%m-%d %H:%M:%S') ' (' %str($NOW) ')';
 
 <%post
-    print $$
+    print($$)
 %>

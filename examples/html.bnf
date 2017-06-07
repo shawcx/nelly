@@ -34,10 +34,10 @@ $ENCODER
 <%post
     fullPath = os.path.join($path, 'test.html')
 
-    print fullPath
-    print
-    print $$
-    print
+    print(fullPath)
+    print()
+    print($$)
+    print()
 
     #fp = open(fullPath, 'wb')
     #fp.write($$)

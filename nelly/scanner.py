@@ -24,7 +24,7 @@ class Scanner(object):
         for fn in _functions:
             _functions[fn] = getattr(self, fn)
 
-        rules = open(path, 'rb').read()
+        rules = open(path, 'r').read()
         rules = eval(rules, _functions)
 
         self.states = collections.defaultdict(list)

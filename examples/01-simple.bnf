@@ -1,4 +1,3 @@
-
 # This selects A or B
 NT1: 'A' | 'B';
 
@@ -13,5 +12,5 @@ EXAMPLE(start): NT1 '\n' NT2 '\n' NT3;
 
 <%post
     # This represents the output of the starting non-terminal
-    print $$
+    print($$)
 %>

@@ -77,7 +77,7 @@ class Sandbox:
                 return
 
     def Expression(self, expression):
-        retval = ''
+        retval = b''
         for statement in expression.statements:
             function = self.lookup[statement.type]
 
