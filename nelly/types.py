@@ -5,7 +5,7 @@
 import nelly
 
 
-class Types(object):
+class Types:
     # Statements
     TERMINAL      = 0
     NONTERMINAL   = 1
@@ -22,7 +22,7 @@ class Types(object):
     WEIGHT = 3
 
 
-class Nonterminal(object):
+class Nonterminal:
     def __init__(self, _type, name=''):
         self.type        = _type
         self.name        = name
@@ -31,7 +31,7 @@ class Nonterminal(object):
         self.weight      = None
 
 
-class Expression(object):
+class Expression:
     def __init__(self, location):
         self.location   = location
         self.code       = None
@@ -48,30 +48,10 @@ class Expression(object):
         self.weight = weight
 
 
-class Statement(object):
+class Statement:
     def __init__(self, _type, name, *args):
         self.type       = _type
         self.name       = name
         self.args       = args
         self.operations = []
 
-
-class Tokens(list):
-    def __init__(self, *args):
-        super(Tokens, self).__init__(*args)
-        self.locations = []
-
-    def Add(self, token, value, line, col):
-        super(Tokens, self).append((token, value, line, col))
-
-    def Next(self):
-        try:
-            return self.pop(0)
-        except IndexError:
-            raise nelly.error('No more tokens')
-
-    def Peek(self):
-        try:
-            return self.__getitem__(0)
-        except IndexError:
-            raise nelly.error('No more tokens')

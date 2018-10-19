@@ -8,30 +8,34 @@ include 'constants.bnf'
     import logging
 
     host = $host
+    try:
+        port = int($port)
+    except KeyError:
+        port = 80
 
     try:
         skt
     except NameError:
         try:
             skt = socket.socket()
-            skt.connect(($host,80))
-        except socket.error, e:
+            skt.connect((host,port))
+        except socket.error as e:
             logging.error('%s', e)
             exit()
 %>
 
 $SEND_HTTP_REQUEST(start):
     REQUEST <%
-        print $$
-        print
+        print($$)
+        print()
 
-        skt.send($$)
+        skt.send($$.encode('utf-8'))
         $* = skt.recv(1500)
 
-        headers,body = $*.split('\r\n\r\n', 1)
+        headers,body = $*.decode('utf-8').split('\r\n\r\n', 1)
 
-        print '%s\n' % headers
-        print '%s' % body
+        print(headers)
+        print(body)
     %>;
 
 REQUEST:

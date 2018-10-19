@@ -28,7 +28,7 @@ BODY
     ;
 
 $ENCODER
-    : \WORD <% $* = base64.b64encode($$) %>
+    : \WORD <% $* = base64.b64encode($$.encode('utf-8')).decode('ascii') %>
     ;
 
 <%post
@@ -38,8 +38,4 @@ $ENCODER
     print()
     print($$)
     print()
-
-    #fp = open(fullPath, 'wb')
-    #fp.write($$)
-    #fp.close()
 %>

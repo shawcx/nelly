@@ -15,6 +15,11 @@ setup(
     license          = __license__,
     description      = 'Python Test Case Generator',
     long_description = open('README.rst').read(),
+    entry_points = {
+        'console_scripts' : [
+            'nelly = nelly.main:main',
+            ]
+        },
     packages = [
         'nelly',
         ],
@@ -24,15 +29,11 @@ setup(
             'bnf/constants.bnf'
             ]
         },
-    scripts = [
-        'bin/nelly',
-        ],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Topic :: Software Development :: Testing',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         ]
     )

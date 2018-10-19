@@ -2,9 +2,6 @@
 # (c) 2008-2016 Matthew Oertle
 #
 
-from __future__ import print_function
-from __future__ import division
-
 import sys
 import os
 import re

@@ -20,5 +20,5 @@ WORD: "hello" | "cat" | "yellow" | "hop-a-long";
 PUNCTUATION: "!" | "?" | ".";
 
 <%post
-    print $$
+    print($$)
 %>

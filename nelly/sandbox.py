@@ -2,8 +2,6 @@
 # (c) 2008-2016 Matthew Oertle
 #
 
-from __future__ import print_function
-
 import sys
 import os
 import random
@@ -42,12 +40,12 @@ class Sandbox:
             r = random.random()
             choice = 0
             for i in items:
-                print(r, i.weight)
+                if i.weight is None:
+                    continue
                 if r < i.weight:
                     break
                 r -= i.weight
                 choice += 1
-            print()
             self.record.append(choice)
         else:
             choice = random.randrange(len(items))
@@ -77,7 +75,7 @@ class Sandbox:
                 return
 
     def Expression(self, expression):
-        retval = b''
+        retval = ''
         for statement in expression.statements:
             function = self.lookup[statement.type]
 
@@ -122,7 +120,7 @@ class Sandbox:
         try:
             nonterminal = self.program.nonterminals[name]
         except KeyError as e:
-            raise nelly.error('Unknown nonterminal: "%s"', name)
+            raise nelly.error('Unknown nonterminal: "%s"', name) from None
 
         retval = self.Expression(self.choose(nonterminal.expressions))
         self.backref[name] = retval
@@ -165,7 +163,7 @@ class Sandbox:
         except KeyError as e:
             name, = e.args
             if name[0] == '$':
-                raise nelly.error('Undeclared variable "%s"', name[1:])
+                raise nelly.error('Undeclared variable "%s"', name[1:]) from None
             raise
         except SystemExit:
             return False

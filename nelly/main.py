@@ -13,38 +13,37 @@ import logging
 import nelly
 
 
-argparser = argparse.ArgumentParser()
-
-argparser.add_argument('grammar',
-    nargs='?', type=argparse.FileType('r'), default=sys.stdin,
-    help='Input file')
-
-argparser.add_argument('--count', '-c',
-    type=int, default=-1,
-    help='Number of times to run')
-
-argparser.add_argument('--include', '-i',
-    action='append',
-    help='Include path')
-
-argparser.add_argument('--vars', '-v',
-    action='append',
-    help='Variables to set')
-
-argparser.add_argument('--debug', '-D',
-    action='store_true',
-    help='Enable debug logging')
-
-args = argparser.parse_args()
-
-logging.basicConfig(
-    format  = '%(asctime)s %(levelname)-8s %(message)s',
-    datefmt = '%Y-%m-%d %H:%M:%S',
-    level   = logging.DEBUG if args.debug else logging.INFO
-    )
-
-
 def main():
+    argparser = argparse.ArgumentParser()
+
+    argparser.add_argument('grammar',
+        nargs='?', type=argparse.FileType('r'), default=sys.stdin,
+        help='Input file')
+
+    argparser.add_argument('--count', '-c',
+        type=int, default=-1,
+        help='Number of times to run')
+
+    argparser.add_argument('--include', '-i',
+        action='append',
+        help='Include path')
+
+    argparser.add_argument('--vars', '-v',
+        action='append',
+        help='Variables to set')
+
+    argparser.add_argument('--debug', '-D',
+        action='store_true',
+        help='Enable debug logging')
+
+    args = argparser.parse_args()
+
+    logging.basicConfig(
+        format  = '%(asctime)s %(levelname)-8s %(message)s',
+        datefmt = '%Y-%m-%d %H:%M:%S',
+        level   = logging.DEBUG if args.debug else logging.INFO
+        )
+
     includes = args.include or []
 
     variables = {}
@@ -82,7 +81,11 @@ def main():
     try:
         while args.count == -1 or count < args.count:
             sandbox = nelly.Sandbox(variables)
-            sandbox.Execute(program)
+            try:
+                sandbox.Execute(program)
+            except nelly.error as e:
+                logging.error('%s', e)
+                break
             count += 1
     except KeyboardInterrupt:
         pass

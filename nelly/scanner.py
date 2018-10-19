@@ -6,7 +6,6 @@ import re
 import collections
 import logging
 
-from .types import Tokens
 
 _functions = {}
 
@@ -19,7 +18,28 @@ def action(fn):
     return fn
 
 
-class Scanner(object):
+class Tokens(list):
+    def __init__(self, *args):
+        super(Tokens, self).__init__(*args)
+        self.locations = []
+
+    def Add(self, token, value, line, col):
+        super(Tokens, self).append((token, value, line, col))
+
+    def Next(self):
+        try:
+            return self.pop(0)
+        except IndexError:
+            raise nelly.error('No more tokens')
+
+    def Peek(self):
+        try:
+            return self.__getitem__(0)
+        except IndexError:
+            raise nelly.error('No more tokens')
+
+
+class Scanner:
     def __init__(self, path):
         for fn in _functions:
             _functions[fn] = getattr(self, fn)
