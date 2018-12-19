@@ -77,17 +77,17 @@ class Sandbox:
     def Expression(self, expression):
         retval = ''
         for statement in expression.statements:
-            function = self.lookup[statement.type]
+            fn = self.lookup[statement.type]
 
             if not statement.operations:
-                current = function(statement.name, *statement.args)
+                current = fn(statement.name, *statement.args)
             else:
                 current = None
 
                 for operation in statement.operations:
                     if operation[0] == Types.SLICE:
                         if current is None:
-                            current = function(statement.name, *statement.args)
+                            current = fn(statement.name, *statement.args)
                         current = current[slice(*operation[1])]
                     elif operation[0] == Types.RANGE:
                         count = random.randint(*operation[1])
@@ -95,18 +95,21 @@ class Sandbox:
                             if count == 0:
                                 current = ''
                             else:
-                                current = function(statement.name, *statement.args)
+                                current = fn(statement.name, *statement.args)
                                 for idx in range(count - 1):
-                                    current += function(statement.name, *statement.args)
+                                    current += fn(statement.name, *statement.args)
                         else:
                             current = current * count
 
             if isinstance(current, str):
                 retval += current
             else:
-                if retval:
-                    logging.debug('Stomping previous data')
-                retval = current
+                if isinstance(current, retval.__class__):
+                    retval += current
+                else:
+                    if retval:
+                        logging.debug('Stomping previous data')
+                    retval = current
 
         self.globals['_g_var']['$*'] = None
         self.globals['_g_var']['$$'] = retval
@@ -146,8 +149,8 @@ class Sandbox:
         retval = self.Expression(self.choose(anonterminal.expressions))
         return retval
 
-    def Function(self, function, arguments):
-        fn = eval(function[:-1], self.globals)
+    def Function(self, fn, arguments):
+        fn = eval(fn[:-1], self.globals)
         args = []
         for expression in arguments.expressions:
             args.append(self.Expression(expression))
