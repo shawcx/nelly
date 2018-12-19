@@ -100,12 +100,10 @@ class Parser(object):
             avg = total / len(weights)
         else:
             avg = 100.0 / len(nonterminal.expressions)
-
         total = 0
         for v in nonterminal.expressions:
             v.weight = avg if v.weight is None else float(v.weight)
             total += v.weight
-
         for v in nonterminal.expressions:
             v.weight = v.weight / total
 
@@ -161,6 +159,19 @@ class Parser(object):
                 pass
             else:
                 raise nelly.error('Unhandled token "%s" at line %d, column %d', token, line, col)
+
+        weights = [v.weight for v in nonterminal.expressions if v.weight]
+        total = sum(weights)
+        if total:
+            avg = total / len(weights)
+        else:
+            avg = 100.0 / len(nonterminal.expressions)
+        total = 0
+        for v in nonterminal.expressions:
+            v.weight = avg if v.weight is None else float(v.weight)
+            total += v.weight
+        for v in nonterminal.expressions:
+            v.weight = v.weight / total
 
     def _quote(self):
         # this will always be the quoted value
@@ -242,7 +253,6 @@ class Parser(object):
         (token,ignore,line,col) = self.tokens.Next()
         if 'rangle' != token:
             raise nelly.error('Missing > at %d, column %d', line, col)
-
         return value
 
     #
