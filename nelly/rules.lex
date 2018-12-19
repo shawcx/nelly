@@ -55,6 +55,7 @@
         ],
         'python_code': [
             ( r'\s*%>',   Pop      ),
+            ( r'\\\$',    Append   ),
             ( r'\$\w+',   Sub      ),
             ( r'\$\$',    Sub      ),
             ( r'\$\*',    Sub      ),
