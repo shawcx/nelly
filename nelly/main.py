@@ -96,7 +96,7 @@ def main():
     return 0
 
 
-if '__main__' == __name__:
+def entry():
     try:
         sys.exit(main())
     except nelly.error as e:
