@@ -46,7 +46,7 @@ def main():
 
     includes = args.include or []
 
-    variables = {}
+    variables = {'$count' : 0}
     if args.vars:
         for var in args.vars:
             name,value = var.split('=', 1)
@@ -87,6 +87,7 @@ def main():
                 logging.error('%s', e)
                 break
             count += 1
+            variables['$count'] = count
     except KeyboardInterrupt:
         pass
     t2 = time.time()

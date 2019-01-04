@@ -31,7 +31,6 @@ class Sandbox:
             '$BR' : self.Backreference,
             }
         self.globals['_g_var'].update(variables)
-
         self.backref = {}
         self.record  = []
 
