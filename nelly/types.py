@@ -27,6 +27,7 @@ class Nonterminal:
         self.type        = _type
         self.name        = name
         self.options     = []
+        self.decorators  = []
         self.expressions = []
         self.weight      = None
 

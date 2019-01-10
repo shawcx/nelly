@@ -34,6 +34,7 @@
             ( r'\&[\w\.]+',   AddToken, 'reference'   ),
             ( r'(::)?\w+',    AddToken, 'nonterminal' ),
             ( r'(\.[\w]+)+',  AddToken, 'member'      ),
+            ( r'@\w+',        AddToken, 'decorator'   ),
 
             ( r'\:', AddToken, 'colon'     ),
             ( r'\|', AddToken, 'pipe'      ),

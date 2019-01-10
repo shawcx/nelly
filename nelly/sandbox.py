@@ -65,7 +65,10 @@ class Sandbox:
         except ValueError:
             raise nelly.error('No entry points')
 
-        self.Nonterminal(name)
+        if not name.startswith('$'):
+            self.Nonterminal(name)
+        else:
+            self.Varterminal(name)
 
         for pycode in self.program.postscript:
             ok = self.__ExecPython(pycode)
@@ -125,6 +128,10 @@ class Sandbox:
             raise nelly.error('Unknown nonterminal: "%s"', name) from None
 
         retval = self.Expression(self.choose(nonterminal.expressions))
+        for decorator in nonterminal.decorators:
+            retval = self.__decorator(decorator)(retval)
+
+        self.globals['_g_var']['$$'] = retval
         self.backref[name] = retval
         return retval
 
@@ -135,8 +142,13 @@ class Sandbox:
             raise nelly.error('Unknown varterminal: "%s"', name)
 
         self.Expression(self.choose(varterminal.expressions))
-        self.backref[name] = self.globals['_g_var']['$*']
-        return self.globals['_g_var']['$*']
+        retval = self.globals['_g_var']['$*']
+        for decorator in varterminal.decorators:
+            retval = self.__decorator(decorator)(retval)
+
+        self.globals['_g_var']['$*'] = retval
+        self.backref[name] = retval
+        return retval
 
     def Terminal(self, value):
         return value
@@ -169,3 +181,9 @@ class Sandbox:
             raise
         except SystemExit:
             return False
+
+    def __decorator(self, name):
+        try:
+            return eval(name, self.globals)
+        except NameError:
+            raise nelly.error('Unknown decorator "%s"', name) from None

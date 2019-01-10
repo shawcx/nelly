@@ -86,6 +86,8 @@ class Parser(object):
                     continue
                 elif 'option' == token:
                     nonterminal.options.append(value);
+                elif 'decorator' == token:
+                    nonterminal.decorators.append(value[1:]);
                 else:
                     raise nelly.error('Unknown option: %s %s', token, value)
             (token,value,line,col) = self.tokens.Next()
