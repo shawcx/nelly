@@ -50,6 +50,8 @@ class Parser(object):
                     value = value[2:]
                 self._nonterminal(Types.NONTERMINAL, value)
             elif 'varterminal' == token:
+                if value.startswith('::'):
+                    value = value[2:]
                 self._nonterminal(Types.VARTERMINAL, value)
             elif 'include' == token:
                 self._include()
