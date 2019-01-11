@@ -57,8 +57,8 @@ class Sandbox:
         for pycode in self.program.preamble:
             ok = self.__ExecPython(pycode)
             if ok == False:
-                logging.error('Terminating on preamble')
-                return
+                raise nelly.error('Terminating on preamble')
+
 
         try:
             name = self.choose(self.program.start, True)
@@ -73,8 +73,7 @@ class Sandbox:
         for pycode in self.program.postscript:
             ok = self.__ExecPython(pycode)
             if ok == False:
-                logging.error('Terminating on postscript')
-                return
+                raise nelly.error('Terminating on postscript')
 
     def Expression(self, expression):
         retval = ''
@@ -117,7 +116,10 @@ class Sandbox:
         self.globals['_g_var']['$$'] = retval
 
         if expression.code:
-            self.__ExecPython(expression.code)
+            ok = self.__ExecPython(expression.code)
+            if ok == False:
+                logging.error('Terminating on semantic action')
+                raise SystemExit
 
         return retval
 
@@ -179,8 +181,8 @@ class Sandbox:
             if name[0] == '$':
                 raise nelly.error('Undeclared variable "%s"', name[1:]) from None
             raise
-        except SystemExit:
-            return False
+        except SystemExit as e:
+            return False if e.code else True
 
     def __decorator(self, name):
         try:
