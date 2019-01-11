@@ -12,8 +12,7 @@ class Program(object):
         self.nonterminals = {}
         self.preamble     = []
         self.postscript   = []
-
-        self.start = []
+        self.start        = []
 
     def Save(self):
         return pickle.dumps(
@@ -31,7 +30,6 @@ class Program(object):
         program = Program()
         program.preamble     = [marshal.loads(m) for m in mapping['preamble']]
         program.postscript   = [marshal.loads(m) for m in mapping['postscript']]
-
         program.nonterminals = mapping['nonterminals']
         for name,nonterminal in program.nonterminals.items():
             if 'start' in nonterminal.options:
