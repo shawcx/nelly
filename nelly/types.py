@@ -50,9 +50,9 @@ class Expression:
 
 
 class Statement:
-    def __init__(self, _type, name, *args):
+    def __init__(self, _type, value, *args):
         self.type       = _type
-        self.name       = name
+        self.value      = value
         self.args       = args
         self.operations = []
 

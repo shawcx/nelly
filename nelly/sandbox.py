@@ -81,14 +81,14 @@ class Sandbox:
             fn = self.lookup[statement.type]
 
             if not statement.operations:
-                current = fn(statement.name, *statement.args)
+                current = fn(statement.value, *statement.args)
             else:
                 current = None
 
                 for operation in statement.operations:
                     if operation[0] == Types.SLICE:
                         if current is None:
-                            current = fn(statement.name, *statement.args)
+                            current = fn(statement.value, *statement.args)
                         current = current[slice(*operation[1])]
                     elif operation[0] == Types.RANGE:
                         count = random.randint(*operation[1])
@@ -96,9 +96,9 @@ class Sandbox:
                             if count == 0:
                                 current = ''
                             else:
-                                current = fn(statement.name, *statement.args)
+                                current = fn(statement.value, *statement.args)
                                 for idx in range(count - 1):
-                                    current += fn(statement.name, *statement.args)
+                                    current += fn(statement.value, *statement.args)
                         else:
                             current = current * count
 
