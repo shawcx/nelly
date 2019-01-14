@@ -162,16 +162,23 @@ class Sandbox:
         retval = self.Expression(self.choose(anonterminal.expressions))
         return retval
 
-    def Function(self, fn, arguments):
-        fn = eval(fn[:-1], self.globals)
+    def Function(self, functionName, arguments):
+        functionName = functionName[:-1]
+        try:
+            function = eval(functionName, self.globals)
+        except NameError:
+            raise nelly.error('Unknown function: %s', functionName)
         args = []
         for expression in arguments.expressions:
             args.append(self.Expression(expression))
-        retval = fn(*args)
+        retval = function(*args)
         return retval
 
     def Reference(self, name):
-        return eval(name, self.globals)
+        try:
+            return eval(name, self.globals)
+        except NameError:
+            raise nelly.error('Unknown reference: &%s', name)
 
     def __ExecPython(self, pycode):
         try:

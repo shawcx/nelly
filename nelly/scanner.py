@@ -6,6 +6,7 @@ import re
 import collections
 import logging
 
+import nelly
 
 _functions = {}
 
@@ -76,7 +77,7 @@ class Scanner:
             try:
                 fn(*args)
             except SyntaxError as e:
-                raise SyntaxError('"%s" at %d, Column %d', e, self.linenumber, self.column)
+                raise nelly.error('Syntax error: "%s" at %d, Column %d', e, self.linenumber, self.column) from None
 
             group = match.group()
             if '\n' in group:
