@@ -15,6 +15,12 @@ class Program(object):
         self.start        = []
 
     def Save(self):
+        for name,nonterminal in self.nonterminals.items():
+            for expression in nonterminal.expressions:
+                if not expression.code:
+                    continue
+                expression.code = marshal.dumps(expression.code)
+
         return pickle.dumps(
             dict(
                 nonterminals = self.nonterminals,
