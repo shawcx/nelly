@@ -14,7 +14,7 @@ setup(
     version          = __version__,
     license          = __license__,
     description      = 'Python Test Case Generator',
-    long_description = open('README.rst').read(),
+    long_description = open('docs/README.rst').read(),
     entry_points = {
         'console_scripts' : [
             'nelly = nelly.main:entry',
