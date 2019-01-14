@@ -46,6 +46,8 @@ class Expression:
         self.statements[-1].operations.append(args)
 
     def Weight(self, weight):
+        if self.weight is not None:
+            raise nelly.error('Weight <%s> already specified', self.weight)
         self.weight = weight
 
 
