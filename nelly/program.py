@@ -18,8 +18,8 @@ class Program(object):
         return pickle.dumps(
             dict(
                 nonterminals = self.nonterminals,
-                preamble     = self.preamble,
-                postscript   = self.postscript,
+                preamble     = [marshal.dumps(m) for m in self.preamble],
+                postscript   = [marshal.dumps(m) for m in self.postscript],
                 )
             )
 

@@ -67,13 +67,7 @@ def main():
 
     logging.debug('Parsing grammar')
     parser = nelly.Parser(includes)
-    parser.Parse(grammar)
-
-    logging.debug('Serializing program')
-    package = parser.program.Save()
-
-    logging.debug('Loading program')
-    program = nelly.Program.Load(package)
+    program = parser.Parse(grammar)
 
     logging.debug('Executing program')
     count = 0

@@ -5,7 +5,6 @@
 import sys
 import os
 import re
-import marshal
 import logging
 
 import nelly
@@ -68,6 +67,7 @@ class Parser(object):
                 raise nelly.error('Unhandled %s %s at %d:%d', token, repr(value), line, col)
 
         self.tokens_stack.pop()
+        return self.program
 
     def _nonterminal(self, _type, name):
         # create a new container and add it to the program
@@ -85,9 +85,11 @@ class Parser(object):
                 elif 'comma' == token:
                     continue
                 elif 'option' == token:
-                    nonterminal.options.append(value);
+                    nonterminal.options.append(value)
+                    if value == 'start':
+                        self.program.start.append(name)
                 elif 'decorator' == token:
-                    nonterminal.decorators.append(value[1:]);
+                    nonterminal.decorators.append(value[1:])
                 else:
                     raise nelly.error('Unknown option: %s %s', token, value)
             (token,value,line,col) = self.tokens.Next()
@@ -281,7 +283,7 @@ class Parser(object):
         self.tokens.Next()
 
         try:
-            return marshal.dumps(compile(codeblock, '<'+name+'>', 'exec'))
+            return compile(codeblock, '<'+name+'>', 'exec')
         except SyntaxError as e:
             raise nelly.error('%d: %s: %s', e.lineno, e.msg, repr(e.text))
 
