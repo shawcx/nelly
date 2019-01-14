@@ -21,7 +21,7 @@ def main():
         help='Input file')
 
     argparser.add_argument('--count', '-c',
-        type=int, default=-1,
+        type=int, default=1,
         help='Number of times to run')
 
     argparser.add_argument('--include', '-i',
@@ -73,7 +73,7 @@ def main():
     count = 0
     t1 = time.time()
     try:
-        while args.count == -1 or count < args.count:
+        while args.count <=0 or count < args.count:
             sandbox = nelly.Sandbox(variables)
             try:
                 sandbox.Execute(program)
