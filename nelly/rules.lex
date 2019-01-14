@@ -25,7 +25,7 @@
             ( r'[+-]?0x[A-Fa-f0-9]+', AddNumber ), # hexadecimal
             ( r'[+-]?0b[0-1]+',       AddNumber ), # binary
             ( r'[+-]?0[0-7]+',        AddNumber ), # octal
-            ( r'[+-]?[0-9]+\.[0-9]+', AddNumber ), # floating point
+            ( r'[+-]?[0-9]*\.[0-9]+', AddNumber ), # floating point
             ( r'[+-]?[0-9]+',         AddNumber ), # decimal
 
             ( r'(::)?\$\w+',  AddToken, 'varterminal' ),
