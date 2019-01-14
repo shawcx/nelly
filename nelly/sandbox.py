@@ -13,24 +13,15 @@ from .types import *
 
 
 class Sandbox:
-    def __init__(self, variables):
-        self.lookup = dict(enumerate((
-            self.Terminal,
-            self.Nonterminal,
-            self.Varterminal,
-            self.Backreference,
-            self.Anonymous,
-            self.Reference,
-            self.Function,
-            )))
-
+    def __init__(self, variables=None):
         self.globals = {}
         self.globals['_g_var'] = {
             '$NT' : self.Nonterminal,
             '$VT' : self.Varterminal,
             '$BR' : self.Backreference,
             }
-        self.globals['_g_var'].update(variables)
+        if variables:
+            self.globals['_g_var'].update(variables)
         self.backref = {}
         self.record  = []
 
@@ -59,7 +50,6 @@ class Sandbox:
             if ok == False:
                 raise nelly.error('Terminating on preamble')
 
-
         try:
             name = self.choose(self.program.start, True)
         except ValueError:
@@ -75,20 +65,21 @@ class Sandbox:
             if ok == False:
                 raise nelly.error('Terminating on postscript')
 
+        return self.globals['_g_var'].get('$$')
+
     def Expression(self, expression):
         retval = ''
         for statement in expression.statements:
-            fn = self.lookup[statement.type]
-
+            statementFunction = Sandbox.LOOKUP[statement.type]
             if not statement.operations:
-                current = fn(statement.value, *statement.args)
+                current = statementFunction(self, statement.value, *statement.args)
             else:
                 current = None
 
                 for operation in statement.operations:
                     if operation[0] == Types.SLICE:
                         if current is None:
-                            current = fn(statement.value, *statement.args)
+                            current = statementFunction(self, statement.value, *statement.args)
                         current = current[slice(*operation[1])]
                     elif operation[0] == Types.RANGE:
                         count = random.randint(*operation[1])
@@ -96,9 +87,9 @@ class Sandbox:
                             if count == 0:
                                 current = ''
                             else:
-                                current = fn(statement.value, *statement.args)
+                                current = statementFunction(self, statement.value, *statement.args)
                                 for idx in range(count - 1):
-                                    current += fn(statement.value, *statement.args)
+                                    current += statementFunction(self, statement.value, *statement.args)
                         else:
                             current = current * count
 
@@ -109,7 +100,7 @@ class Sandbox:
                     retval += current
                 else:
                     if retval:
-                        logging.debug('Stomping previous data')
+                        logging.warn('Stomping previous data')
                     retval = current
 
         self.globals['_g_var']['$*'] = None
@@ -149,6 +140,7 @@ class Sandbox:
             retval = self.__decorator(decorator)(retval)
 
         self.globals['_g_var']['$*'] = retval
+        self.globals['_g_var']['$$'] = retval
         self.backref[name] = retval
         return retval
 
@@ -196,3 +188,13 @@ class Sandbox:
             return eval(name, self.globals)
         except NameError:
             raise nelly.error('Unknown decorator "%s"', name) from None
+
+    LOOKUP = dict(enumerate((
+        Terminal,
+        Nonterminal,
+        Varterminal,
+        Backreference,
+        Anonymous,
+        Reference,
+        Function,
+        )))
