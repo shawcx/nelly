@@ -9,6 +9,9 @@
             ( r"'''",           Push,  'triple_quote'  ), # a triple_quoted string
             ( r'"',             Push,  'double_quote'  ), # a double_quoted string
             ( r"'",             Push,  'single_quote'  ), # a single_quoted string
+            ( r"b'''",          Push,  'triple_bytes'  ), # a triple_quoted byte string
+            ( r'b"',            Push,  'double_bytes'  ), # a double_quoted byte string
+            ( r"b'",            Push,  'single_bytes'  ), # a single_quoted byte string
             ( r"/\*",           Push,  'comment'       ), # a multi-line comment
             ( r"//.*",          Ignore                 ), # a comment
             ( r"#.*",           Ignore                 ), # a comment
@@ -66,22 +69,57 @@
         ],
         'single_quote': [
             ( r"'",       Pop      ),
-            ( r"\\x..",   Unescape ),
-            ( r"\\.",     Unescape ),
+            ( r'\\\n',    Ignore   ),
+            ( r"\\U[0-9A-Fa-f]{8}", Unescape ),
+            ( r"\\u[0-9A-Fa-f]{4}", Unescape ),
+            ( r"\\x[0-9A-Fa-f]{2}", Unescape ),
+            ( r'\\[\\\'\"abfnrtv]', Unescape ),
             ( r".",       Append   ),
             ( r"\n",      Append   ),
         ],
         'double_quote': [
             ( r'"',       Pop      ),
-            ( r'\\.',     Unescape ),
+            ( r'\\\n',    Ignore   ),
+            ( r"\\U[0-9A-Fa-f]{8}", Unescape ),
+            ( r"\\u[0-9A-Fa-f]{4}", Unescape ),
+            ( r"\\x[0-9A-Fa-f]{2}", Unescape ),
+            ( r'\\[\\\'\"abfnrtv]', Unescape ),
             ( r'.',       Append   ),
             ( r'\n',      Append   ),
         ],
         'triple_quote': [
             ( r"'''",     Pop      ),
-            ( r'\\.',     Unescape ),
-            ( r'.',       Append   ),
-            ( r'\n',      Append   ),
+            ( r'\\\n',    Ignore   ),
+            ( r"\\U[0-9A-Fa-f]{8}", Unescape ),
+            ( r"\\u[0-9A-Fa-f]{4}", Unescape ),
+            ( r"\\x[0-9A-Fa-f]{2}", Unescape ),
+            ( r'\\[\\\'\"abfnrtv]', Unescape ),
+            ( r'.',       Append  ),
+            ( r'\n',      Append  ),
+        ],
+        'single_bytes': [
+            ( r"'",       PopByte  ),
+            ( r'\\\n',    Ignore   ),
+            ( r"\\x[0-9A-Fa-f]{2}", UnescapeHexByte ),
+            ( r'\\[\\\'\"abfnrtv]', UnescapeByte ),
+            ( r".",       AppendByte   ),
+            ( r"\n",      AppendByte   ),
+        ],
+        'double_bytes': [
+            ( r'"',       PopByte  ),
+            ( r'\\\n',    Ignore   ),
+            ( r"\\x[0-9A-Fa-f]{2}", UnescapeHexByte ),
+            ( r'\\[\\\'\"abfnrtv]', UnescapeByte ),
+            ( r".",       AppendByte   ),
+            ( r"\n",      AppendByte   ),
+        ],
+        'triple_bytes': [
+            ( r"'''",     PopByte  ),
+            ( r'\\\n',    Ignore   ),
+            ( r"\\x[0-9A-Fa-f]{2}", UnescapeHexByte ),
+            ( r'\\[\\\'\"abfnrtv]', UnescapeByte ),
+            ( r".",       AppendByte   ),
+            ( r"\n",      AppendByte   ),
         ],
         'comment': [
             ( r"/\*",     Push, 'comment' ), # nested comments

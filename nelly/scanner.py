@@ -2,9 +2,10 @@
 # (c) 2008-2016 Matthew Oertle
 #
 
-import re
+import binascii
+import codecs
 import collections
-import logging
+import re
 
 import nelly
 
@@ -125,14 +126,50 @@ class Scanner:
 
     @action
     def Sub(self, match):
-        self.current += '_g_var["' + match + '"]'
+        self.current.append('_g_var["' + match + '"]')
 
     @action
     def Unescape(self, match):
         try:
-            self.current += match.decode('string_escape')
-        except AttributeError: # python3 support
-            self.current += bytes(match, 'utf-8').decode('unicode_escape')
+            self.current.append(codecs.unicode_escape_decode(match)[0])
+        except UnicodeDecodeError:
+            raise SyntaxError(match)
+
+    @action
+    def AppendByte(self, match):
+        try:
+            self.current.append(bytes([ord(match)]))
+        except ValueError:
+            raise SyntaxError('non-ASCII character in byte string: ' + match)
+
+    @action
+    def UnescapeHexByte(self, match):
+        self.current.append(binascii.unhexlify(match[2:]))
+
+    @action
+    def UnescapeByte(self, match):
+        lookup = {
+            "\\" : b'\\',
+            "'"  : b"'",
+            '"'  : b'"',
+            'a'  : b'\a',
+            'b'  : b'\b',
+            'f'  : b'\f',
+            'n'  : b'\n',
+            'r'  : b'\r',
+            't'  : b'\t',
+            'v'  : b'\v',
+            }
+        #print('>>>', match[1], '<<<')
+        self.current.append(lookup[match[1]])
+
+    @action
+    def PopByte(self, match):
+        match = match.strip()
+        mode  = self.stack.pop()
+        self.AddToken(b''.join(self.current), mode)
+        self.current = []
+        self.AddToken(match, 'end_' + mode)
 
     @action
     def Ignore(self, match):

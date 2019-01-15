@@ -120,6 +120,9 @@ class Parser(object):
             elif token in ['start_single_quote', 'start_double_quote', 'start_triple_quote']:
                 quote = self._quote()
                 expression.Statement(Types.TERMINAL, quote)
+            elif token in ['start_single_bytes', 'start_double_bytes', 'start_triple_bytes']:
+                byte_quote = self._quote()
+                expression.Statement(Types.TERMINAL, byte_quote)
             elif 'nonterminal' == token:
                 expression.Statement(Types.NONTERMINAL, value)
             elif 'varterminal' == token:
