@@ -100,19 +100,6 @@ class Parser(object):
         # parse zero or more expressions until a semicolon is found
         self._expressions('pipe', 'semicolon', nonterminal)
 
-        weights = [v.weight for v in nonterminal.expressions if v.weight]
-        total = sum(weights)
-        if total:
-            avg = total / len(weights)
-        else:
-            avg = 100.0 / len(nonterminal.expressions)
-        total = 0
-        for v in nonterminal.expressions:
-            v.weight = avg if v.weight is None else float(v.weight)
-            total += v.weight
-        for v in nonterminal.expressions:
-            v.weight = v.weight / total
-
     def _expressions(self, delimiter, sentinel, nonterminal):
         (token,value,line,col) = self.tokens.Peek()
         expression = Expression((line,col))
@@ -165,19 +152,6 @@ class Parser(object):
                 pass
             else:
                 raise nelly.error('Unhandled token "%s" at line %d, column %d', token, line, col)
-
-        weights = [v.weight for v in nonterminal.expressions if v.weight]
-        total = sum(weights)
-        if total:
-            avg = total / len(weights)
-        else:
-            avg = 100.0 / len(nonterminal.expressions)
-        total = 0
-        for v in nonterminal.expressions:
-            v.weight = avg if v.weight is None else float(v.weight)
-            total += v.weight
-        for v in nonterminal.expressions:
-            v.weight = v.weight / total
 
     def _quote(self):
         # this will always be the quoted value

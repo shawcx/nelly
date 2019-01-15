@@ -29,7 +29,6 @@ class Nonterminal:
         self.options     = []
         self.decorators  = []
         self.expressions = []
-        self.weight      = None
 
 
 class Expression:
@@ -37,7 +36,8 @@ class Expression:
         self.location   = location
         self.code       = None
         self.statements = []
-        self.weight     = None
+        self.weight     = 1
+        self.explicitWeight = False
 
     def Statement(self, *args):
         self.statements.append(Statement(*args))
@@ -48,9 +48,10 @@ class Expression:
     def Weight(self, weight):
         if weight < 0:
             raise nelly.error('Invalid weight <%s> specified', weight)
-        if self.weight is not None:
+        if self.explicitWeight:
             raise nelly.error('Weight <%s> already specified', self.weight)
         self.weight = weight
+        self.explicitWeight = True
 
 
 class Statement:

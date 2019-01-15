@@ -25,22 +25,18 @@ class Sandbox:
         self.backref = {}
         self.record  = []
 
-    def choose(self, items, noweight=False):
-        if not noweight:
-            r = random.random()
-            choice = 0
-            for i in items:
-                if i.weight is None:
-                    continue
-                if r < i.weight:
-                    break
-                r -= i.weight
-                choice += 1
-            self.record.append(choice)
-        else:
-            choice = random.randrange(len(items))
-            self.record.append(choice)
-        return items[choice]
+    def choose(self, nonterminal):
+        choice = 0
+        target = random.random()
+        totalWeight = sum(e.weight for e in nonterminal.expressions)
+        distribution = [e.weight / totalWeight for e in nonterminal.expressions]
+        for ratio in distribution:
+            if target < ratio:
+                break
+            target -= ratio
+            choice += 1
+        self.record.append(choice)
+        return nonterminal.expressions[choice]
 
     def Execute(self, program):
         self.program = program
@@ -50,10 +46,12 @@ class Sandbox:
             if ok == False:
                 raise nelly.error('Terminating on preamble')
 
-        try:
-            name = self.choose(self.program.start, True)
-        except ValueError:
+        if not self.program.start:
             raise nelly.error('No entry points')
+
+        choice = random.randrange(len(self.program.start))
+        self.record.append(choice)
+        name = self.program.start[choice]
 
         if not name.startswith('$'):
             self.Nonterminal(name)
@@ -120,7 +118,7 @@ class Sandbox:
         except KeyError as e:
             raise nelly.error('Unknown nonterminal: "%s"', name) from None
 
-        retval = self.Expression(self.choose(nonterminal.expressions))
+        retval = self.Expression(self.choose(nonterminal))
         for decorator in nonterminal.decorators:
             retval = self.__decorator(decorator)(retval)
 
@@ -134,7 +132,7 @@ class Sandbox:
         except KeyError as e:
             raise nelly.error('Unknown varterminal: "%s"', name)
 
-        self.Expression(self.choose(varterminal.expressions))
+        self.Expression(self.choose(varterminal))
         retval = self.globals['_g_var']['$*']
         for decorator in varterminal.decorators:
             retval = self.__decorator(decorator)(retval)
@@ -151,7 +149,7 @@ class Sandbox:
         return self.backref.get(name[1:], None)
 
     def Anonymous(self, anonterminal):
-        retval = self.Expression(self.choose(anonterminal.expressions))
+        retval = self.Expression(self.choose(anonterminal))
         return retval
 
     def Function(self, functionName, arguments):
