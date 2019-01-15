@@ -1,0 +1,19 @@
+
+<%pre
+    import nelly
+
+    BYTE   = nelly.Pack(int, 'B')
+    WORD   = nelly.Pack(int, 'H')
+    DWORD  = nelly.Pack(int, 'I')
+    QWORD  = nelly.Pack(int, 'Q')
+
+    LBYTE  = nelly.Pack(int, '<B')
+    LWORD  = nelly.Pack(int, '<H')
+    LDWORD = nelly.Pack(int, '<I')
+    LQWORD = nelly.Pack(int, '<Q')
+
+    BBYTE  = nelly.Pack(int, '>B')
+    BWORD  = nelly.Pack(int, '>H')
+    BDWORD = nelly.Pack(int, '>I')
+    BQWORD = nelly.Pack(int, '>Q')
+%>

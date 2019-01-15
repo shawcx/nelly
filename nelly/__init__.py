@@ -19,3 +19,4 @@ from . import version
 from .program  import Program
 from .parser   import Parser
 from .sandbox  import Sandbox
+from .pack     import Pack
