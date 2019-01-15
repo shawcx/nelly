@@ -26,7 +26,8 @@ setup(
     package_data = {
         'nelly': [
             'rules.lex',
-            'bnf/constants.bnf'
+            'bnf/constants.bnf',
+            'bnf/pack.bnf',
             ]
         },
     classifiers=[
