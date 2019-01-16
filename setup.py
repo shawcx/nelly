@@ -1,11 +1,23 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
 
-from distutils.core import setup
+from setuptools import setup
 
 exec(compile(open('nelly/version.py').read(),'version.py','exec'))
+
+def findDataFiles(root):
+    paths = []
+    trim = len(root) + 1
+    for base,directories,filenames in os.walk(root):
+        if base.endswith('__pycache__'):
+            continue
+        for filename in filenames:
+            if filename.endswith('.py'):
+                continue
+            paths.append(os.path.join(base, filename)[trim:])
+    return paths
 
 setup(
     name             = 'nelly',
@@ -15,6 +27,7 @@ setup(
     license          = __license__,
     description      = 'Python Test Case Generator',
     long_description = open('docs/README.rst').read(),
+    url              = 'https://github.com/moertle/nelly',
     entry_points = {
         'console_scripts' : [
             'nelly = nelly.main:entry',
@@ -24,11 +37,7 @@ setup(
         'nelly',
         ],
     package_data = {
-        'nelly': [
-            'rules.lex',
-            'bnf/constants.bnf',
-            'bnf/pack.bnf',
-            ]
+        'nelly': findDataFiles('nelly')
         },
     classifiers=[
         'Development Status :: 4 - Beta',
