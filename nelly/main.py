@@ -13,11 +13,14 @@ import logging
 import nelly
 
 
-def main():
+def main(args=None):
+    if args is None:
+        args = sys.argv[1:]
+
     argparser = argparse.ArgumentParser()
 
     argparser.add_argument('grammar',
-        nargs='?', type=argparse.FileType('r'), default=sys.stdin,
+        nargs='?', default=None,
         help='Input file')
 
     argparser.add_argument('--count', '-c',
@@ -36,7 +39,7 @@ def main():
         action='store_true',
         help='Enable debug logging')
 
-    args = argparser.parse_args()
+    args = argparser.parse_args(args)
 
     logging.basicConfig(
         format  = '%(asctime)s %(levelname)-8s %(message)s',
@@ -53,15 +56,18 @@ def main():
             name = '$'+name
             variables[name] = value
 
-    if args.grammar == sys.stdin:
+    if args.grammar is None:
         logging.info('Reading from stdin')
+        grammarFile = sys.stdin
     else:
-        path = os.path.abspath(args.grammar.name)
-        path = os.path.dirname(path)
-        sys.path.insert(0, path)
+        path = os.path.expanduser(args.grammar)
+        path = os.path.abspath(path)
+        # insert root directory for relative imports related to the grammar
+        sys.path.insert(0, os.path.dirname(path))
+        grammarFile = open(path, 'r')
 
     try:
-        grammar = args.grammar.read()
+        grammar = grammarFile.read()
     except KeyboardInterrupt:
         return -1;
 
