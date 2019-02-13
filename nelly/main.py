@@ -28,7 +28,7 @@ def main(args=None):
         help='Number of times to run')
 
     argparser.add_argument('--include', '-i',
-        action='append',
+        action='append', default=[],
         help='Include path')
 
     argparser.add_argument('--vars', '-v',
@@ -47,7 +47,7 @@ def main(args=None):
         level   = logging.DEBUG if args.debug else logging.INFO
         )
 
-    includes = args.include or []
+    includes = args.include
 
     variables = {'$count' : 0}
     if args.vars:
@@ -64,7 +64,10 @@ def main(args=None):
         path = os.path.abspath(path)
         # insert root directory for relative imports related to the grammar
         sys.path.insert(0, os.path.dirname(path))
-        grammarFile = open(path, 'r')
+        try:
+            grammarFile = open(path, 'r')
+        except IOError:
+            raise nelly.error('Could not open grammar: %s', path)
 
     try:
         grammar = grammarFile.read()
