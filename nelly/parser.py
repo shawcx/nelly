@@ -31,8 +31,10 @@ class Parser(object):
         self.groups = None
         self.group  = None
 
-    def Parse(self, grammar):
-        logging.debug('Parsing grammar (%d bytes)', len(grammar))
+    def Parse(self, grammarFile):
+        grammar = grammarFile.read()
+
+        logging.debug('Parsing %s (%d bytes)', grammarFile.name, len(grammar))
 
         self.tokens = self.scanner.Scan(grammar)
 
@@ -282,8 +284,8 @@ class Parser(object):
         for include_dir in self.include_dirs:
             try:
                 fullpath = os.path.join(include_dir, path)
-                content = open(fullpath, 'r').read()
-                logging.debug('Included file %s', repr(fullpath))
+                content = open(fullpath, 'r')
+                logging.debug('Including file %s', repr(fullpath))
             except:
                 continue
 

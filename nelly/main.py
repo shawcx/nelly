@@ -69,14 +69,8 @@ def main(args=None):
         except IOError:
             raise nelly.error('Could not open grammar: %s', path)
 
-    try:
-        grammar = grammarFile.read()
-    except KeyboardInterrupt:
-        return -1;
-
-    logging.debug('Parsing grammar')
     parser = nelly.Parser(includes)
-    program = parser.Parse(grammar)
+    program = parser.Parse(grammarFile)
 
     logging.debug('Executing program')
     count = 0
