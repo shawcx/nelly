@@ -23,6 +23,10 @@ def main(args=None):
         nargs='?', default=None,
         help='Input file')
 
+    argparser.add_argument('--start', '-s',
+        action='append',
+        help='Specify the starting point')
+
     argparser.add_argument('--count', '-c',
         type=int, default=1,
         help='Number of times to run')
@@ -71,6 +75,9 @@ def main(args=None):
 
     parser = nelly.Parser(includes)
     program = parser.Parse(grammarFile)
+
+    if args.start:
+        program.start = args.start
 
     logging.debug('Executing program')
     count = 0
