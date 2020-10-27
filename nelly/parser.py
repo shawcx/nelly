@@ -16,7 +16,7 @@ from .types   import *
 
 class Parser(object):
     def __init__(self, include_dirs=[]):
-        self.include_dirs = include_dirs + [ os.path.join(nelly.root, 'bnf') ]
+        self.include_dirs = include_dirs + [ os.path.join(nelly.root, 'grammars') ]
 
         # setup the scanner based on the regular expressions
         self.scanner = Scanner(os.path.join(nelly.root, 'rules.lex'))
