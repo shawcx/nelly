@@ -1,3 +1,6 @@
+#
+# (c) 2008-2020 Matthew Shaw
+#
 
 import sys
 

@@ -1,5 +1,5 @@
 #
-# (c) 2008-2016 Matthew Oertle
+# (c) 2008-2020 Matthew Shaw
 #
 
 import nelly

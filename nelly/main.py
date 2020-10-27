@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #
-# (c) 2008-2016 Matthew Oertle
+# (c) 2008-2020 Matthew Shaw
 #
 
 import sys
