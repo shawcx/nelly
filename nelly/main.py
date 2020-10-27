@@ -28,7 +28,7 @@ def main(args=None):
         help='Number of times to run')
 
     argparser.add_argument('--include', '-i',
-        action='append', default=[],
+        action='append', default=['.'],
         help='Include path')
 
     argparser.add_argument('--vars', '-v',
