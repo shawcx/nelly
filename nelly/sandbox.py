@@ -14,7 +14,9 @@ from .types import *
 
 class Sandbox:
     def __init__(self, variables=None):
-        self.globals = {}
+        self.globals = {
+            'nelly' : nelly,
+        }
         self.globals['_g_var'] = {
             '$NT' : self.Nonterminal,
             '$VT' : self.Varterminal,
@@ -43,8 +45,8 @@ class Sandbox:
 
         for pycode in self.program.preamble:
             ok = self.__ExecPython(pycode)
-            if ok == False:
-                raise nelly.error('Terminating on preamble')
+            if ok:
+                raise nelly.error('SystemExit raised on preamble')
 
         if not self.program.start:
             raise nelly.error('No entry points')
@@ -60,8 +62,8 @@ class Sandbox:
 
         for pycode in self.program.postscript:
             ok = self.__ExecPython(pycode)
-            if ok == False:
-                raise nelly.error('Terminating on postscript')
+            if ok:
+                raise nelly.error('SystemExit raised on postscript')
 
         return self.globals['_g_var'].get('$$')
 

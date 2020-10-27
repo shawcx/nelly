@@ -87,6 +87,11 @@ def main(args=None):
             sandbox = nelly.Sandbox(variables)
             try:
                 sandbox.Execute(program)
+            except SystemError:
+                logging.warn('Script called fail()')
+            except SystemExit:
+                logging.warn('Script called bail()')
+                break
             except nelly.error as e:
                 logging.error('%s', e)
                 break

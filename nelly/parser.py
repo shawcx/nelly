@@ -57,9 +57,9 @@ class Parser(object):
             elif 'include' == token:
                 self._include()
             elif 'start_python_code' == token:
-                if '<%pre' == value:
+                if r'<%pre' == value:
                     self.program.preamble.append(self._python_code('pre'))
-                elif '<%post' == value:
+                elif r'<%post' == value:
                     self.program.postscript.append(self._python_code('post'))
                 else:
                     raise nelly.error('Please specify pre or post in code section')
@@ -249,7 +249,7 @@ class Parser(object):
         values = [s for s in value.split('\n') if s.strip()] or ['']
 
         # save the whitepsace of the first line
-        ws = re.compile('\s*').match(values[0]).group()
+        ws = re.compile(r'\s*').match(values[0]).group()
 
         # check indentation
         if [s for s in values if not s.startswith(ws)]:
