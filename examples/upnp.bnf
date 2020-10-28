@@ -1,0 +1,11 @@
+include 'protocols/upnp.bnf'
+
+UPNP_HTTP: UPNP_HTTP_START;
+
+SEARCH: SSDP_DISCOVER;
+
+<%post
+    path = 'output/upnp/%s/%s-%.4d.upnp' % ($prefix, $prefix, $count)
+    print(path)
+    open(path, 'wb').write($$.encode('utf-8'))
+%>

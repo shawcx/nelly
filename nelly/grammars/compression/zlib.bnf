@@ -1,0 +1,8 @@
+
+<%pre
+import zlib
+%>
+
+ZLIB_COMPRESS:
+    <% $* = zlib.compress($$) %>
+    ;

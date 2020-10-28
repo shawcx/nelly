@@ -1,0 +1,308 @@
+include "constants.bnf"
+include "utils/hexdump.bnf"
+
+<%pre
+    import random
+    import struct
+    import os
+    import hashlib
+    import time
+
+    try:
+        import OpenSSL
+    except ImportError:
+        print('Need Python OpenSSL library')
+        nelly.bail()
+
+    try:
+        import Crypto
+    except ImportError:
+        print('Need Python Crypto library')
+        nelly.fail()
+
+    if 'nCount' not in globals():
+        nCount = 0
+
+    skt = socket.socket()
+    skt.connect(($host,443))
+
+    def c24(sLen):
+        (nHigh,nLow) = struct.unpack('!BH', sLen)
+        return (nHigh << 16) + nLow
+
+    def dump509(sX509):
+        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_ASN1, sX509)
+
+        x509name = x509.get_subject()
+        print('[+] X509 Name:',)
+        d = {}
+        for (sKey,sValue) in x509name.get_components():
+            d[sKey] = sValue
+        print(d['CN'])
+        print()
+
+        pkey = x509.get_pubkey()
+
+        priv_key = OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_ASN1, pkey)
+
+        hexdump(priv_key)
+
+    print('[+] Starting')
+%>
+
+
+// -----------------------------------------------------------------------------
+
+$PREMASTER
+    : VERSION CHAR{46}
+    <%
+        sHandshake = ''
+        sPreMaster = $$
+        $* = ''
+    %>
+    ;
+
+// -----------------------------------------------------------------------------
+
+SSL_START(start):
+    $PREMASTER              // generate the premaster secret
+    $SSL_FIRST_PACKET       // then generate the first packet
+    $SSL_SECOND_PACKET      // followed by the second packet (brilliant!)
+    ;
+
+// -----------------------------------------------------------------------------
+
+$SSL_FIRST_PACKET:
+    // the first packet is pretty simple
+    ( TYPE_HANDSHAKE VERSION %struct.pack('!H', %len(SSL_CLIENT_HELLO_HDR)) \SSL_CLIENT_HELLO_HDR )
+    <%
+
+    sServerHelloRandom = None
+    sX509 = None
+
+    # send it out on the socket
+    print('[+] Sending on socket')
+    bOk = sc.write($$)
+    if not bOk:
+        sc.close()
+
+    bQuit = False
+    while False == bQuit:
+        if sc.timeout(1.0):
+            break
+
+        # read the first 5 bytes
+        sData = sc.read(5)
+        if not sData or 5 != len(sData):
+            # XXX: handle this error
+            print('[!] Read error from server')
+            fail()
+
+        # unpack the data
+        (ct,vers,nLen) = struct.unpack('!BHH', sData)
+        sData = sc.read(nLen)
+
+        # is it the right type?
+        if ct != 22:
+            # XXX: handle this error
+            print('[!] Invalid response from server')
+            fail()
+
+        # add it to the handshake data
+        sHandshake += sData
+
+        # parse the data
+        while sData:
+            nType = ord(sData[0])
+            nLen = c24(sData[1:4])
+            sData = sData[4:]
+
+            sHello = sData[:nLen]
+
+            # server hello
+            if 2 == nType:
+                print('[+] Server Hello')
+                sServerHelloRandom = sHello[2:34]
+                nSessLen = ord(sHello[34])
+                #sData2 = sHello[35:]
+
+                # SSL Session...
+                #self.sSession = sHello[:nSessLen]
+                #(nSuite,nComp) = struct.unpack('!HB', sHello[nSessLen:])
+
+            # the X.509 certificate
+            elif 11 == nType:
+                sX509 = sHello[6:]
+                print('[+] X509 Cert:', len(sX509), 'bytes')
+                dump509(sX509)
+
+            # end of records
+            elif 14 == nType:
+                bQuit = True
+                break
+
+            sData = sData[nLen:]
+
+    # generate the master and mac
+
+    sRand = sPreMaster + sClientHelloRandom + sServerHelloRandom
+    sMaster =  hashlib.md5(sPreMaster + hashlib.sha1('A' + sRand).digest()).digest()
+    sMaster += hashlib.md5(sPreMaster + hashlib.sha1('BB' + sRand).digest()).digest()
+    sMaster += hashlib.md5(sPreMaster + hashlib.sha1('CCC' + sRand).digest()).digest()
+
+    sRand = sMaster + sServerHelloRandom + sClientHelloRandom
+    sWriteMAC =  hashlib.md5(sMaster + hashlib.sha1('A' + sRand).digest()).digest()
+    sWriteMAC += hashlib.md5(sMaster + hashlib.sha1('BB' + sRand).digest()).digest()
+    sWriteMAC += hashlib.md5(sMaster + hashlib.sha1('CCC' + sRand).digest()).digest()
+
+    print('[+] Done with first packet')
+    print()
+
+    $* = ''
+
+    %>
+    ;
+
+// -----------------------------------------------------------------------------
+
+$SSL_SECOND_PACKET
+    :
+    TYPE_HANDSHAKE
+    VERSION
+    %struct.pack('!H', %len(SSL_CLIENT_KEY_EXCHANGE))
+    \SSL_CLIENT_KEY_EXCHANGE
+
+    TYPE_CHANGE_CIPHER_SPEC
+    VERSION
+    0x00 0x01 0x01
+
+    TYPE_HANDSHAKE
+    VERSION
+    0x00 0x20
+
+    $SSL_FINISHED_MESSAGE
+
+    <%
+    print('[+] GEN...')
+    hexdump($$)
+
+    fail()
+
+    bOk = sc.write($$)
+    if not bOk:
+        sc.close()
+
+    $* = sc.read(5)
+    if $*:
+        (ct,vers,nLen) = struct.unpack('!BHH', $*)
+        $* += sc.read(nLen)
+        hexdump($*)
+
+    print('>>>>', len($*))
+    %>
+    ;
+
+// -----------------------------------------------------------------------------
+
+SSL_CLIENT_HELLO_HDR:
+    // HANDSHAKE_TYPE: Client Hello
+    0x01
+    // Length of the next section
+    %struct.pack('!I', %len(SSL_CLIENT_HELLO))[1:]
+    // The next sesction
+    \SSL_CLIENT_HELLO
+    <%
+        sHandshake += $$
+
+        #print('[+] SSL_CLIENT_HELLO')
+        #hexdump($$)
+    %>
+    ;
+
+SSL_CLIENT_HELLO:
+    VERSION
+
+    CLIENT_HELLO_RANDOM_STRING
+
+    0x00                                // Session ID Length
+
+    //0x00 0x02
+    //0x00 0x0A
+
+    0x00 0x18                           // Cipher Suites Length
+    0x00 0x39
+    0x00 0x38
+    0x00 0x35
+    0x00 0x33
+    0x00 0x32
+    0x00 0x04
+    0x00 0x05
+    0x00 0x2f
+    0x00 0x16
+    0x00 0x13
+    0xfe 0xff
+    0x00 0x0a
+
+    0x01                                // Compression Methods Length
+    0x00                                // Compression Method
+    ;
+
+CLIENT_HELLO_RANDOM_STRING:
+    %struct.pack('!I', %int($TIME)) CHAR{28}
+    <%
+        sClientHelloRandom = $$
+    %>
+    ;
+
+// -----------------------------------------------------------------------------
+
+SSL_CLIENT_KEY_EXCHANGE:
+    0x10                                // HANDSHAKE_TYPE: Client Key Exchange
+    %struct.pack('!I', %len(SSL_ENCRYPTED))[1:]
+    \SSL_ENCRYPTED
+    <%
+        sHandshake += $$
+    %>
+    ;
+
+// -----------------------------------------------------------------------------
+
+SSL_ENCRYPTED:
+    %struct.pack('!H', %len($SSL_ENCRYPTED2))
+    \$SSL_ENCRYPTED2
+    ;
+
+$SSL_ENCRYPTED2:
+    <%
+        #print('[+] X509')
+        #hexdump(sX509)
+        #$* = crypt.rsa_encrypt(sX509, sPreMaster)
+        $* = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+        #hexdump($*)
+    %>
+    ;
+
+
+$SSL_FINISHED_MESSAGE:
+    <%
+        #print('Handshake:', len(sHandshake))
+
+        p1 = chr(0x36)
+        p2 = chr(0x5c)
+        sndr = 'CLNT'
+        m = hashlib.md5(sMaster + p2*40 + hashlib.md5(sHandshake + sndr + sMaster + p1*40).digest()).digest()
+        s = hashlib.sha1(sMaster + p2*48 + hashlib.sha1(sHandshake + sndr + sMaster + p1*48).digest()).digest()
+
+        $* = m + s[:16]
+
+        #print(len(m), len(s))
+        #print(':::', `$*`)
+        #print()
+    %>
+    ;
+
+<%post
+    print('Closing...')
+    sc.close()
+    print('[+] Done')
+%>

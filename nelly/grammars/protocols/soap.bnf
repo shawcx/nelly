@@ -1,0 +1,31 @@
+
+
+::SOAP_DOC:
+    SOAP_DOCTYPE
+    SOAP_ENVELOPE
+    ;
+
+::SOAP_DOCTYPE:
+    '<?xml version="1.0" encoding="UTF-8"?>' LF
+    ;
+
+::SOAP_ENVELOPE:
+    '<SOAP-ENV:Envelope' LF
+    '  SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"' LF
+    '  xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/"' LF
+    '  xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"' LF
+    '  >' LF
+    SOAP_ENV_BODY
+    '</SOAP-ENV:Envelope>' LF
+    ;
+
+::SOAP_ENV_BODY:
+    '  <SOAP-ENV:Body>' LF
+    SOAP_ACTION
+    '  </SOAP-ENV:Body>' LF
+    ;
+
+::SOAP_ACTION:
+    '    <ns1:action xmlns:ns1="urn:schemas-upnp-org:service:WANIPConnection:1" SOAP-ENC:root="1">' LF
+    '    </ns1:action>' LF
+    ;

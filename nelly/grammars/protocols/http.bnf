@@ -1,0 +1,71 @@
+
+include 'constants.bnf'
+include 'compression/zlib.bnf'
+
+::HTTP_START:
+    HTTP_ACTION SP HTTP_PATH SP "HTTP/1.1" CRLF
+    _HTTP_HEADERS
+    \HTTP_BODY
+    ;
+
+::HTTP_GET:
+    "GET" SP HTTP_PATH SP "HTTP/1.1" CRLF
+    _HTTP_HEADERS
+    ;
+
+::HTTP_POST:
+    "POST" SP HTTP_PATH SP "HTTP/1.1" CRLF
+    _HTTP_HEADERS
+    \HTTP_BODY
+    ;
+
+::HTTP_ACTION
+    : "GET"    <40>
+    | "POST"   <40>
+    | "PUT"    <10>
+    | "DELETE" <10>
+    ;
+
+::_HTTP_HEADERS:
+    _HEADER_HOST
+    HTTP_USER_AGENT
+    HTTP_CONTENT_TYPE
+    $_HEADER_CONTENT_LENGTH
+    HTTP_HEADERS
+    HTTP_CONNECTION
+    CRLF
+    ;
+
+::_HEADER_HOST:
+    "Host: " HTTP_HOST CRLF
+    ;
+
+::$_HEADER_CONTENT_LENGTH:
+    HTTP_BODY
+    <%
+    if $$:
+        $* = 'Content-Length: %d\r\n' % len($$)
+    else:
+        $* = ''
+    %>
+    ;
+
+// override these
+
+::HTTP_HOST:
+    "localhost"
+    ;
+
+::HTTP_PATH:
+    ('/' WORD){5}
+    ;
+
+::HTTP_CONTENT_TYPE: 'Content-Type: application/x-www-form-urlencoded' CRLF;
+
+::HTTP_USER_AGENT: 'User-Agent: Nelly' CRLF;
+
+::HTTP_CONNECTION:;
+
+::HTTP_HEADERS:;
+
+::HTTP_BODY:;

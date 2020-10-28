@@ -1,0 +1,8 @@
+
+<%pre
+import bz2
+%>
+
+BZ2_COMPRESS:
+    <% $* = bz2.compress($$) %>
+    ;

@@ -1,0 +1,21 @@
+<%pre
+    import socket
+%>
+
+DHCP(start)
+    : OP HTYPE HLEN HOPS XID SECS FLAGS
+    ;
+
+
+CIADDR (Client IP address)
+YIADDR (Your IP address)
+SIADDR (Server IP address)
+GIADDR (Gateway IP address)
+CHADDR (Client hardware address)
+0x00053C04
+0x8D590000
+0x00000000
+0x00000000
+192 octets of 0s, or overflow space for additional options; BOOTP legacy.
+Magic cookie
+0x63825363
