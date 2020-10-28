@@ -1,13 +1,13 @@
 
 include 'constants.bnf'
+include 'protocols/http.bnf'
 
 <%pre
     import socket
-    import random
-    import struct
     import logging
 
     host = $host
+
     try:
         port = int($port)
     except KeyError:
@@ -24,8 +24,20 @@ include 'constants.bnf'
             exit()
 %>
 
+::HTTP_BODY:
+    "matt"
+    ;
+
+<%post
+    print($$)
+%>
+
+::HTTP_HOST:
+    &host
+    ;
+
 $SEND_HTTP_REQUEST(start):
-    REQUEST <%
+    HTTP_POST <%
         print($$)
         print()
 
@@ -37,20 +49,3 @@ $SEND_HTTP_REQUEST(start):
         print(headers)
         print(body)
     %>;
-
-REQUEST:
-    "GET " URL " HTTP/1.1" CRLF
-    "Host: " &host CRLF
-    HEADER {0,10}
-    CRLF
-    ;
-
-URL: '/' ('index.' EXTENSION | WORD '.' EXTENSION);
-
-EXTENSION: WORD[:3];
-
-HEADER: HEADERS ": " WORD CRLF;
-
-HEADERS:
-    'Content-Type' | 'Date' | 'Content-Encoding'
-    ;

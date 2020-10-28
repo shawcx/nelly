@@ -4,6 +4,7 @@ include "constants.bnf"
 
 <%pre
     import base64
+    # ensure that $path is defined before running
     $path
 %>
 
