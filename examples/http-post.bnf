@@ -6,6 +6,8 @@ include 'protocols/http.bnf'
     import socket
     import logging
 
+    nelly.encode = 'utf-8'
+
     host = $host
 
     try:
@@ -24,24 +26,17 @@ include 'protocols/http.bnf'
             exit()
 %>
 
-::HTTP_BODY:
-    "matt"
-    ;
+::HTTP_HOST: &host;
 
-<%post
-    print($$)
-%>
-
-::HTTP_HOST:
-    &host
-    ;
+::HTTP_BODY: "matt";
 
 $SEND_HTTP_REQUEST(start):
-    HTTP_POST <%
-        print($$)
+    HTTP_POST
+    <%
+        print($$.decode('utf-8'))
         print()
 
-        skt.send($$.encode('utf-8'))
+        skt.send($$)
         $* = skt.recv(1500)
 
         headers,body = $*.decode('utf-8').split('\r\n\r\n', 1)
