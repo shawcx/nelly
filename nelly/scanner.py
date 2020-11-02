@@ -121,8 +121,18 @@ class Scanner:
         self.current.append(match)
 
     @action
+    def AddChar(self, match):
+        if match.startswith(r'\x'):
+            match = int(match[2:], 16)
+        elif match.startswith(r'\d'):
+            match = int(match[2:])
+        else:
+            raise SyntaxError(match)
+        self.AddToken(chr(match), 'constant')
+
+    @action
     def AddNumber(self, match):
-        self.tokens.Add('constant', eval(match), self.linenumber, self.column)
+        self.AddToken(eval(match), 'constant')
 
     @action
     def Sub(self, match):
@@ -160,7 +170,6 @@ class Scanner:
             't'  : b'\t',
             'v'  : b'\v',
             }
-        #print('>>>', match[1], '<<<')
         self.current.append(lookup[match[1]])
 
     @action
