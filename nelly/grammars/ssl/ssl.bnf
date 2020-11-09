@@ -1,5 +1,4 @@
 include "constants.bnf"
-include "utils/hexdump.bnf"
 
 <%pre
     import random
@@ -7,32 +6,30 @@ include "utils/hexdump.bnf"
     import os
     import hashlib
     import time
+    import socket
+    import select
 
-    try:
-        import OpenSSL
-    except ImportError:
-        print('Need Python OpenSSL library')
-        nelly.bail()
-
-    try:
-        import Crypto
-    except ImportError:
-        print('Need Python Crypto library')
-        nelly.fail()
-
-    if 'nCount' not in globals():
-        nCount = 0
+    nelly.encode = 'iso-8859-1'
 
     skt = socket.socket()
-    skt.connect(($host,443))
+    skt.connect(('localhost',4433))
 
     def c24(sLen):
         (nHigh,nLow) = struct.unpack('!BH', sLen)
         return (nHigh << 16) + nLow
 
-    def dump509(sX509):
-        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_ASN1, sX509)
+    def _timeout(fd, wait=10.0):
+        fds = select.select([fd], [], [], wait)
+        return 0 == len(fds[0])
 
+    #try:
+    #    import OpenSSL
+    #except ImportError:
+    #    print('Need Python OpenSSL library')
+    #    nelly.bail()
+
+    def dump509(x509):
+        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)
         x509name = x509.get_subject()
         print('[+] X509 Name:',)
         d = {}
@@ -40,25 +37,33 @@ include "utils/hexdump.bnf"
             d[sKey] = sValue
         print(d['CN'])
         print()
-
         pkey = x509.get_pubkey()
-
         priv_key = OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_ASN1, pkey)
-
-        hexdump(priv_key)
+        nelly.utils.hexdump(priv_key)
 
     print('[+] Starting')
 %>
 
+VERSION: \x03 \x01;
+
+// -----------------------------------------------------------------------------
+//
+// TYPES FOUND AT BEGINNING OF RECORD
+//
+
+TYPE_HANDSHAKE: \x16;
+TYPE_CHANGE_CIPHER_SPEC: \x14;
 
 // -----------------------------------------------------------------------------
 
+$TIME: <% $* = int(time.time()) %>;
+
 $PREMASTER
-    : VERSION CHAR{46}
+    : VERSION RANDCHAR{46}
     <%
-        sHandshake = ''
-        sPreMaster = $$
-        $* = ''
+        handshake = b''
+        premaster = $$
+        $* = b''
     %>
     ;
 
@@ -77,43 +82,43 @@ $SSL_FIRST_PACKET:
     ( TYPE_HANDSHAKE VERSION %struct.pack('!H', %len(SSL_CLIENT_HELLO_HDR)) \SSL_CLIENT_HELLO_HDR )
     <%
 
-    sServerHelloRandom = None
-    sX509 = None
-
+    serverHelloRandom = None
+    x509 = None
     # send it out on the socket
     print('[+] Sending on socket')
-    bOk = sc.write($$)
-    if not bOk:
-        sc.close()
+    ok = skt.send($$)
+    if not ok:
+        skt.close()
 
-    bQuit = False
-    while False == bQuit:
-        if sc.timeout(1.0):
+    shouldQuit = False
+    while False == shouldQuit:
+        if _timeout(skt):
             break
 
         # read the first 5 bytes
-        sData = sc.read(5)
+        sData = skt.recv(5)
         if not sData or 5 != len(sData):
             # XXX: handle this error
             print('[!] Read error from server')
-            fail()
+            exit()
+
 
         # unpack the data
         (ct,vers,nLen) = struct.unpack('!BHH', sData)
-        sData = sc.read(nLen)
+        sData = skt.recv(nLen)
 
         # is it the right type?
         if ct != 22:
             # XXX: handle this error
             print('[!] Invalid response from server')
-            fail()
+            nelly.utils.fail()
 
         # add it to the handshake data
-        sHandshake += sData
+        handshake += sData
 
         # parse the data
         while sData:
-            nType = ord(sData[0])
+            nType = sData[0]
             nLen = c24(sData[1:4])
             sData = sData[4:]
 
@@ -122,8 +127,8 @@ $SSL_FIRST_PACKET:
             # server hello
             if 2 == nType:
                 print('[+] Server Hello')
-                sServerHelloRandom = sHello[2:34]
-                nSessLen = ord(sHello[34])
+                serverHelloRandom = sHello[2:34]
+                nSessLen = sHello[34]
                 #sData2 = sHello[35:]
 
                 # SSL Session...
@@ -132,28 +137,28 @@ $SSL_FIRST_PACKET:
 
             # the X.509 certificate
             elif 11 == nType:
-                sX509 = sHello[6:]
-                print('[+] X509 Cert:', len(sX509), 'bytes')
-                dump509(sX509)
+                x509 = sHello[6:]
+                print('[+] X509 Cert:', len(x509), 'bytes')
+                #dump509(x509)
 
             # end of records
             elif 14 == nType:
-                bQuit = True
+                shouldQuit = True
                 break
 
             sData = sData[nLen:]
 
     # generate the master and mac
 
-    sRand = sPreMaster + sClientHelloRandom + sServerHelloRandom
-    sMaster =  hashlib.md5(sPreMaster + hashlib.sha1('A' + sRand).digest()).digest()
-    sMaster += hashlib.md5(sPreMaster + hashlib.sha1('BB' + sRand).digest()).digest()
-    sMaster += hashlib.md5(sPreMaster + hashlib.sha1('CCC' + sRand).digest()).digest()
+    randstr = premaster + clientHelloRandom + serverHelloRandom
+    master  = hashlib.md5(premaster + hashlib.sha1(b'A'   + randstr).digest()).digest()
+    master += hashlib.md5(premaster + hashlib.sha1(b'BB'  + randstr).digest()).digest()
+    master += hashlib.md5(premaster + hashlib.sha1(b'CCC' + randstr).digest()).digest()
 
-    sRand = sMaster + sServerHelloRandom + sClientHelloRandom
-    sWriteMAC =  hashlib.md5(sMaster + hashlib.sha1('A' + sRand).digest()).digest()
-    sWriteMAC += hashlib.md5(sMaster + hashlib.sha1('BB' + sRand).digest()).digest()
-    sWriteMAC += hashlib.md5(sMaster + hashlib.sha1('CCC' + sRand).digest()).digest()
+    randstr = master + serverHelloRandom + clientHelloRandom
+    writeMAC  = hashlib.md5(master + hashlib.sha1(b'A'   + randstr).digest()).digest()
+    writeMAC += hashlib.md5(master + hashlib.sha1(b'BB'  + randstr).digest()).digest()
+    writeMAC += hashlib.md5(master + hashlib.sha1(b'CCC' + randstr).digest()).digest()
 
     print('[+] Done with first packet')
     print()
@@ -174,29 +179,29 @@ $SSL_SECOND_PACKET
 
     TYPE_CHANGE_CIPHER_SPEC
     VERSION
-    0x00 0x01 0x01
+    \x00 \x01 \x01
 
     TYPE_HANDSHAKE
     VERSION
-    0x00 0x20
+    \x00 \x20
 
     $SSL_FINISHED_MESSAGE
 
     <%
     print('[+] GEN...')
-    hexdump($$)
+    #nelly.utils.hexdump($$)
 
-    fail()
+    exit()
 
-    bOk = sc.write($$)
-    if not bOk:
-        sc.close()
+    ok = skt.send($$)
+    if not ok:
+        skt.close()
 
-    $* = sc.read(5)
+    $* = skt.recv(5)
     if $*:
         (ct,vers,nLen) = struct.unpack('!BHH', $*)
-        $* += sc.read(nLen)
-        hexdump($*)
+        $* += skt.recv(nLen)
+        nelly.utils.hexdump($*)
 
     print('>>>>', len($*))
     %>
@@ -204,64 +209,59 @@ $SSL_SECOND_PACKET
 
 // -----------------------------------------------------------------------------
 
-SSL_CLIENT_HELLO_HDR:
+::SSL_CLIENT_HELLO_HDR:
     // HANDSHAKE_TYPE: Client Hello
-    0x01
+    \x01
     // Length of the next section
     %struct.pack('!I', %len(SSL_CLIENT_HELLO))[1:]
     // The next sesction
     \SSL_CLIENT_HELLO
     <%
-        sHandshake += $$
-
-        #print('[+] SSL_CLIENT_HELLO')
-        #hexdump($$)
+        handshake += $$
+        #print('[+] SSL_CLIENT_HELLO_HDR')
+        #nelly.utils.hexdump($$)
     %>
     ;
 
-SSL_CLIENT_HELLO:
+::SSL_CLIENT_HELLO:
     VERSION
-
     CLIENT_HELLO_RANDOM_STRING
+    \x00                                // Session ID Length
 
-    0x00                                // Session ID Length
+    //\x00 \x02
+    //\x00 \x0A
 
-    //0x00 0x02
-    //0x00 0x0A
+    \x00 \x18                           // Cipher Suites Length
+    \x00 \x39
+    \x00 \x38
+    \x00 \x35
+    \x00 \x33
+    \x00 \x32
+    \x00 \x04
+    \x00 \x05
+    \x00 \x2f
+    \x00 \x16
+    \x00 \x13
+    \xfe \xff
+    \x00 \x0a
 
-    0x00 0x18                           // Cipher Suites Length
-    0x00 0x39
-    0x00 0x38
-    0x00 0x35
-    0x00 0x33
-    0x00 0x32
-    0x00 0x04
-    0x00 0x05
-    0x00 0x2f
-    0x00 0x16
-    0x00 0x13
-    0xfe 0xff
-    0x00 0x0a
-
-    0x01                                // Compression Methods Length
-    0x00                                // Compression Method
+    \x01                                // Compression Methods Length
+    \x00                                // Compression Method
     ;
 
 CLIENT_HELLO_RANDOM_STRING:
-    %struct.pack('!I', %int($TIME)) CHAR{28}
-    <%
-        sClientHelloRandom = $$
-    %>
+    %struct.pack('!I', $TIME) RANDCHAR{28}
+    <% clientHelloRandom = $$ %>
     ;
 
 // -----------------------------------------------------------------------------
 
 SSL_CLIENT_KEY_EXCHANGE:
-    0x10                                // HANDSHAKE_TYPE: Client Key Exchange
+    \x10                                // HANDSHAKE_TYPE: Client Key Exchange
     %struct.pack('!I', %len(SSL_ENCRYPTED))[1:]
     \SSL_ENCRYPTED
     <%
-        sHandshake += $$
+        handshake += $$
     %>
     ;
 
@@ -275,23 +275,21 @@ SSL_ENCRYPTED:
 $SSL_ENCRYPTED2:
     <%
         #print('[+] X509')
-        #hexdump(sX509)
-        #$* = crypt.rsa_encrypt(sX509, sPreMaster)
+        #nelly.utils.hexdump(x509)
+        #$* = crypt.rsa_encrypt(x509, premaster)
         $* = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-        #hexdump($*)
+        #nelly.utils.hexdump($*)
     %>
     ;
 
-
 $SSL_FINISHED_MESSAGE:
     <%
-        #print('Handshake:', len(sHandshake))
+        p1 = b'\x36'
+        p2 = b'\x5c'
+        sndr = b'CLNT'
 
-        p1 = chr(0x36)
-        p2 = chr(0x5c)
-        sndr = 'CLNT'
-        m = hashlib.md5(sMaster + p2*40 + hashlib.md5(sHandshake + sndr + sMaster + p1*40).digest()).digest()
-        s = hashlib.sha1(sMaster + p2*48 + hashlib.sha1(sHandshake + sndr + sMaster + p1*48).digest()).digest()
+        m = hashlib.md5(master  + p2*40 + hashlib.md5(handshake + sndr + master + p1*40).digest()).digest()
+        s = hashlib.sha1(master + p2*48 + hashlib.sha1(handshake + sndr + master + p1*48).digest()).digest()
 
         $* = m + s[:16]
 
@@ -303,6 +301,6 @@ $SSL_FINISHED_MESSAGE:
 
 <%post
     print('Closing...')
-    sc.close()
+    skt.close()
     print('[+] Done')
 %>

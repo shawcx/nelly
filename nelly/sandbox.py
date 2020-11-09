@@ -14,6 +14,8 @@ from .types import *
 
 class Sandbox:
     def __init__(self, variables=None):
+        nelly.encode = None
+
         self.globals = {
             'nelly' : nelly,
         }
@@ -68,7 +70,8 @@ class Sandbox:
         return self.globals['_g_var'].get('$$')
 
     def Expression(self, expression):
-        retval = ''
+        retval = b'' if nelly.encode else ''
+
         for statement in expression.statements:
             statementFunction = Sandbox.LOOKUP[statement.type]
             if not statement.operations:
@@ -93,15 +96,18 @@ class Sandbox:
                         else:
                             current = current * count
 
-            if isinstance(current, str):
-                retval += current
-            else:
-                if isinstance(current, retval.__class__):
+            if nelly.encode:
+                if isinstance(current, str):
+                    current = current.encode(nelly.encode)
+
+            if retval:
+                try:
                     retval += current
-                else:
-                    if retval:
-                        logging.warn('Stomping previous data')
-                    retval = current
+                except TypeError as e:
+                    print(e)
+                    raise nelly.error('TypeError at %s', expression.location) from None
+            else:
+                retval = current
 
         self.globals['_g_var']['$*'] = None
         self.globals['_g_var']['$$'] = retval

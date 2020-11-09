@@ -25,6 +25,9 @@
 
             ( r'empty',    AddToken, 'empty'   ),  # explicit empty expression
 
+            ( r'\\x[A-Fa-f0-9]+', AddChar ), # hexadecimal
+            ( r'\\d[0-9]+',       AddChar ), # decimal
+
             ( r'[+-]?0x[A-Fa-f0-9]+', AddNumber ), # hexadecimal
             ( r'[+-]?0b[0-1]+',       AddNumber ), # binary
             ( r'[+-]?0[0-7]+',        AddNumber ), # octal
