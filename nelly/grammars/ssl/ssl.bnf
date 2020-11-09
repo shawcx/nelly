@@ -1,5 +1,7 @@
 include "constants.bnf"
 
+include "ssl/cipher_suites.bnf"
+
 <%pre
     import random
     import struct
@@ -8,6 +10,15 @@ include "constants.bnf"
     import time
     import socket
     import select
+
+    import cryptography.x509
+    import cryptography.hazmat.primitives.asymmetric.rsa
+    import cryptography.hazmat.primitives.asymmetric.padding
+    import cryptography.hazmat.primitives.hashes
+    import cryptography.hazmat.primitives.serialization
+    import cryptography.exceptions
+
+    backend = cryptography.hazmat.backends.default_backend()
 
     nelly.encode = 'iso-8859-1'
 
@@ -22,26 +33,6 @@ include "constants.bnf"
         fds = select.select([fd], [], [], wait)
         return 0 == len(fds[0])
 
-    #try:
-    #    import OpenSSL
-    #except ImportError:
-    #    print('Need Python OpenSSL library')
-    #    nelly.bail()
-
-    def dump509(x509):
-        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)
-        x509name = x509.get_subject()
-        print('[+] X509 Name:',)
-        d = {}
-        for (sKey,sValue) in x509name.get_components():
-            d[sKey] = sValue
-        print(d['CN'])
-        print()
-        pkey = x509.get_pubkey()
-        priv_key = OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_ASN1, pkey)
-        nelly.utils.hexdump(priv_key)
-
-    print('[+] Starting')
 %>
 
 VERSION: \x03 \x01;
@@ -85,7 +76,6 @@ $SSL_FIRST_PACKET:
     serverHelloRandom = None
     x509 = None
     # send it out on the socket
-    print('[+] Sending on socket')
     ok = skt.send($$)
     if not ok:
         skt.close()
@@ -96,16 +86,16 @@ $SSL_FIRST_PACKET:
             break
 
         # read the first 5 bytes
-        sData = skt.recv(5)
-        if not sData or 5 != len(sData):
+        data = skt.recv(5)
+        if not data or 5 != len(data):
             # XXX: handle this error
             print('[!] Read error from server')
             exit()
 
 
         # unpack the data
-        (ct,vers,nLen) = struct.unpack('!BHH', sData)
-        sData = skt.recv(nLen)
+        (ct,vers,nLen) = struct.unpack('!BHH', data)
+        data = skt.recv(nLen)
 
         # is it the right type?
         if ct != 22:
@@ -114,39 +104,36 @@ $SSL_FIRST_PACKET:
             nelly.utils.fail()
 
         # add it to the handshake data
-        handshake += sData
+        handshake += data
 
         # parse the data
-        while sData:
-            nType = sData[0]
-            nLen = c24(sData[1:4])
-            sData = sData[4:]
+        while data:
+            nType = data[0]
+            nLen = c24(data[1:4])
+            data = data[4:]
 
-            sHello = sData[:nLen]
+            server_hello = data[:nLen]
 
             # server hello
             if 2 == nType:
-                print('[+] Server Hello')
-                serverHelloRandom = sHello[2:34]
-                nSessLen = sHello[34]
-                #sData2 = sHello[35:]
+                print('[+] Received Server Hello')
+                serverHelloRandom = server_hello[2:34]
+                nSessLen = server_hello[34]
 
                 # SSL Session...
-                #self.sSession = sHello[:nSessLen]
-                #(nSuite,nComp) = struct.unpack('!HB', sHello[nSessLen:])
+                #self.sSession = server_hello[:nSessLen]
+                #(nSuite,nComp) = struct.unpack('!HB', server_hello[nSessLen:])
 
             # the X.509 certificate
             elif 11 == nType:
-                x509 = sHello[6:]
-                print('[+] X509 Cert:', len(x509), 'bytes')
-                #dump509(x509)
+                x509 = server_hello[6:]
 
             # end of records
             elif 14 == nType:
                 shouldQuit = True
                 break
 
-            sData = sData[nLen:]
+            data = data[nLen:]
 
     # generate the master and mac
 
@@ -159,9 +146,6 @@ $SSL_FIRST_PACKET:
     writeMAC  = hashlib.md5(master + hashlib.sha1(b'A'   + randstr).digest()).digest()
     writeMAC += hashlib.md5(master + hashlib.sha1(b'BB'  + randstr).digest()).digest()
     writeMAC += hashlib.md5(master + hashlib.sha1(b'CCC' + randstr).digest()).digest()
-
-    print('[+] Done with first packet')
-    print()
 
     $* = ''
 
@@ -190,8 +174,6 @@ $SSL_SECOND_PACKET
     <%
     print('[+] GEN...')
     #nelly.utils.hexdump($$)
-
-    exit()
 
     ok = skt.send($$)
     if not ok:
@@ -228,22 +210,10 @@ $SSL_SECOND_PACKET
     CLIENT_HELLO_RANDOM_STRING
     \x00                                // Session ID Length
 
-    //\x00 \x02
-    //\x00 \x0A
+    CIPHER_SUITES
 
-    \x00 \x18                           // Cipher Suites Length
-    \x00 \x39
-    \x00 \x38
-    \x00 \x35
-    \x00 \x33
-    \x00 \x32
-    \x00 \x04
-    \x00 \x05
-    \x00 \x2f
-    \x00 \x16
-    \x00 \x13
-    \xfe \xff
-    \x00 \x0a
+//    \x00 \x02
+//    \x00 \x0A
 
     \x01                                // Compression Methods Length
     \x00                                // Compression Method
@@ -253,6 +223,17 @@ CLIENT_HELLO_RANDOM_STRING:
     %struct.pack('!I', $TIME) RANDCHAR{28}
     <% clientHelloRandom = $$ %>
     ;
+
+
+::CIPHER_SUITES:
+    %struct.pack('!H', %len(_CIPHER_SUITES))
+    \_CIPHER_SUITES
+    ;
+
+::_CIPHER_SUITES:
+    \x00 \x0A
+    ;
+
 
 // -----------------------------------------------------------------------------
 
@@ -274,11 +255,21 @@ SSL_ENCRYPTED:
 
 $SSL_ENCRYPTED2:
     <%
-        #print('[+] X509')
-        #nelly.utils.hexdump(x509)
-        #$* = crypt.rsa_encrypt(x509, premaster)
-        $* = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-        #nelly.utils.hexdump($*)
+        cert = cryptography.x509.load_der_x509_certificate(x509, backend)
+
+        print('[+] Certificate Subject:', cert.subject.rfc4514_string())
+
+        server_public_key = cert.public_key()
+
+        $* = server_public_key.encrypt(premaster, cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15())
+
+        print('Pre-Master')
+        nelly.utils.hexdump(premaster)
+        print()
+
+        print('Encrypted Pre-Master')
+        nelly.utils.hexdump($*)
+        print()
     %>
     ;
 
