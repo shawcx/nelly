@@ -1,11 +1,25 @@
 include 'protocols/upnp.bnf'
 
+USAGE(start):
+    <%
+    print('''
+    Usage:
+      specify -s UPNP_HTTP or -s SEARCH
+      use -v prefix=<name>
+      output written to output/upnp/<name>/<name>-<count>.upnp
+
+    ''')
+    %>
+    ;
+
 UPNP_HTTP: UPNP_HTTP_START;
 
 SEARCH: SSDP_DISCOVER;
 
 <%post
     path = 'output/upnp/%s/%s-%.4d.upnp' % ($prefix, $prefix, $count)
-    print(path)
-    open(path, 'wb').write($$.encode('utf-8'))
+    try:
+        open(path, 'wb').write($$.encode('utf-8'))
+    except FileNotFoundError:
+        os.makedirs(os.path.dirname(path))
 %>
