@@ -115,8 +115,7 @@ class Sandbox:
         if expression.code:
             ok = self.__ExecPython(expression.code)
             if ok == False:
-                logging.error('Terminating on semantic action')
-                raise SystemExit
+                raise nelly.error('Terminating on semantic action')
 
         return retval
 
@@ -188,6 +187,10 @@ class Sandbox:
             raise
         except SystemExit as e:
             return False if e.code else True
+        except Exception as e:
+            logging.error('Unhandled exception in %s', pycode.co_filename[1:-1])
+            logging.exception(e)
+            return False
 
     def __decorator(self, name):
         try:
