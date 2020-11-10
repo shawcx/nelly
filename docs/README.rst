@@ -23,11 +23,11 @@ Matthew Shaw <moertle@gmail.com>
 Constants
 =========
 
-Constants in productions can consist of double-quoted strings, single-quoted strings, decimal, hexadecimal, or octal numbers.
+Constants in productions can consist of double-quoted strings, single-quoted strings, decimal, hexadecimal.
 
 .. code-block::
 
-    A: "A" | 'A' | 65 | 0x41 | 0101;
+    A: "A" | 'A' | \d65 | \x41;
 
 Concatenation
 =============
@@ -36,7 +36,7 @@ Productions are concatenated when they are seperated by white-space.
 
 .. code-block::
 
-    CONCAT: "CONC" 0x41 "TEN" 65 "TION";
+    CONCAT: "CONC" \x41 "TEN" \d65 "TION";
 
 Selection
 =========
