@@ -7,11 +7,16 @@ DHCP(start)
     ;
 
 
-CIADDR (Client IP address)
-YIADDR (Your IP address)
-SIADDR (Server IP address)
-GIADDR (Gateway IP address)
-CHADDR (Client hardware address)
+CIADDR: "(Client IP address)";
+
+YIADDR: "(Your IP address)";
+
+SIADDR: "(Server IP address)";
+
+GIADDR: "(Gateway IP address)";
+
+CHADDR: "(Client hardware address)";
+
 0x00053C04
 0x8D590000
 0x00000000

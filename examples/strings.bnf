@@ -1,0 +1,14 @@
+
+//$B(start): $A <% $* = 'aaa' %>;
+//$A(start): '癔' <% $* = 'They said "%s"' % $$ %>;
+
+A(start)
+    : '\u8888'
+    | '\U00008888'
+    | b'matt\t\'o\xff'
+    | b"m\x61tto\tm      \\\'\"\a\b\f\n\r\t\v\xff\x80\xfe"
+    ;
+
+<%post
+    print($$)
+%>
