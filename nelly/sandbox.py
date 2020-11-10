@@ -14,8 +14,6 @@ from .types import *
 
 class Sandbox:
     def __init__(self, variables=None):
-        nelly.encode = None
-
         self.globals = {
             'nelly' : nelly,
         }

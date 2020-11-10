@@ -39,11 +39,16 @@ def main(args=None):
         action='append',
         help='Variables to set')
 
+    argparser.add_argument('--encode', '-e',
+        help='Set the encoding to use for binary data')
+
     argparser.add_argument('--debug', '-D',
         action='store_true',
         help='Enable debug logging')
 
     args = argparser.parse_args(args)
+
+    nelly.encode = args.encode
 
     logging.basicConfig(
         format  = '%(asctime)s %(levelname)-8s %(message)s',
