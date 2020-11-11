@@ -66,7 +66,6 @@
             ( r'\$\w+',   Sub      ),
             ( r'\$\$',    Sub      ),
             ( r'\$\*',    Sub      ),
-            ( r'\s*\#.*', Ignore   ),
             ( r'\n',      Append   ),
             ( r'.',       Append   ),
         ],
