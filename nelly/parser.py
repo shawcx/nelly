@@ -17,6 +17,7 @@ from .types   import *
 class Parser(object):
     def __init__(self, include_dirs=[]):
         self.include_dirs = include_dirs + [ os.path.join(nelly.root, 'grammars') ]
+        self.pwd = []
 
         # setup the scanner based on the regular expressions
         self.scanner = Scanner(os.path.join(nelly.root, 'rules.lex'))
@@ -33,6 +34,8 @@ class Parser(object):
 
     def Parse(self, grammarFile):
         grammar = grammarFile.read()
+
+        self.pwd.append(os.path.dirname(grammarFile.name))
 
         logging.debug('Parsing %s (%d bytes)', grammarFile.name, len(grammar))
 
@@ -281,11 +284,12 @@ class Parser(object):
 
         # try opening the file in each include directory, ignore errors
         content = None
-        for include_dir in self.include_dirs:
+        for include_dir in self.pwd[-1:] + self.include_dirs:
             try:
                 fullpath = os.path.join(include_dir, path)
                 content = open(fullpath, 'r')
                 logging.debug('Including file %s', repr(fullpath))
+                break
             except:
                 continue
 
@@ -299,6 +303,7 @@ class Parser(object):
 
         # compile it inline
         self.Parse(content)
+        self.pwd.pop()
 
         # restore the current tokens
         self.tokens = self.tokens_stack[-1]
