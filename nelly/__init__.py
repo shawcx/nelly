@@ -16,8 +16,8 @@ class error(Exception):
 
 from . import version
 
-from .program  import Program
-from .parser   import Parser
-from .sandbox  import Sandbox
-
+from .program    import Program
+from .parser     import Parser
+from .sandbox    import Sandbox
+from .dictionary import Dictionary
 from .utils import *

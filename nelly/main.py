@@ -42,6 +42,10 @@ def main(args=None):
     argparser.add_argument('--encode', '-e',
         help='Set the encoding to use for binary data')
 
+    argparser.add_argument('--dictionary', '-d',
+        action='store_true',
+        help='Output an AFL dictionary file')
+
     argparser.add_argument('--debug', '-D',
         action='store_true',
         help='Enable debug logging')
@@ -84,29 +88,33 @@ def main(args=None):
     if args.start:
         program.start = args.start
 
-    logging.debug('Executing program')
-    count = 0
-    t1 = time.time()
-    try:
-        while args.count <=0 or count < args.count:
-            sandbox = nelly.Sandbox(variables)
-            try:
-                sandbox.Execute(program)
-            except SystemError:
-                logging.warn('Script called fail()')
-            except SystemExit:
-                logging.warn('Script called bail()')
-                break
-            except nelly.error as e:
-                logging.error('%s', e)
-                break
-            count += 1
-            variables['$count'] = count
-    except KeyboardInterrupt:
-        pass
-    t2 = time.time()
+    if args.dictionary:
+        dictionary = nelly.Dictionary()
+        dictionary.Walk(program)
+    else:
+        logging.debug('Executing program')
+        count = 0
+        t1 = time.time()
+        try:
+            while args.count <=0 or count < args.count:
+                sandbox = nelly.Sandbox(variables)
+                try:
+                    sandbox.Execute(program)
+                except SystemError:
+                    logging.warn('Script called fail()')
+                except SystemExit:
+                    logging.warn('Script called bail()')
+                    break
+                except nelly.error as e:
+                    logging.error('%s', e)
+                    break
+                count += 1
+                variables['$count'] = count
+        except KeyboardInterrupt:
+            pass
+        t2 = time.time()
 
-    logging.info('Ran %d iterations in %.2f seconds (%.2f tps)', count, t2 - t1, count / (t2 - t1))
+        logging.info('Ran %d iterations in %.2f seconds (%.2f tps)', count, t2 - t1, count / (t2 - t1))
 
     return 0
 

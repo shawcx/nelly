@@ -63,7 +63,6 @@ SUFFIX
 
 ::SOAPACTION: 'SOAPAction: ' SERVICE_TYPE '#' SERVICE_NAME;
 
-//SERVICE_TYPE: %random.choice(&string.ascii_letters){100,2100};
 SERVICE_TYPE: 'n:schemas-upnp-org:service:WANIPConnection:1';
 
 SERVICE_NAME: %random.choice(&string.ascii_letters){100,2100};
