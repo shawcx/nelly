@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-
 #
-# (c) 2008-2020 Matthew Shaw
+# (c) 2008-2021 Matthew Shaw
 #
 
 import sys
@@ -13,9 +12,9 @@ import logging
 import nelly
 
 
-def main(args=None):
-    if args is None:
-        args = sys.argv[1:]
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
 
     argparser = argparse.ArgumentParser()
 
@@ -43,14 +42,13 @@ def main(args=None):
         help='Set the encoding to use for binary data')
 
     argparser.add_argument('--dictionary', '-d',
-        action='store_true',
         help='Output an AFL dictionary file')
 
     argparser.add_argument('--debug', '-D',
         action='store_true',
         help='Enable debug logging')
 
-    args = argparser.parse_args(args)
+    args = argparser.parse_args(argv)
 
     nelly.encode = args.encode
 
@@ -82,46 +80,42 @@ def main(args=None):
         except IOError:
             raise nelly.error('Could not open grammar: %s', path)
 
-    parser = nelly.Parser(includes)
+    parser  = nelly.Parser(includes)
     program = parser.Parse(grammarFile)
 
     if args.start:
         program.start = args.start
 
-    if args.dictionary:
-        dictionary = nelly.Dictionary()
-        dictionary.Walk(program)
-    else:
-        logging.debug('Executing program')
-        count = 0
-        t1 = time.time()
-        try:
-            while args.count <=0 or count < args.count:
-                sandbox = nelly.Sandbox(variables)
-                try:
-                    sandbox.Execute(program)
-                except SystemError:
-                    logging.warn('Script called fail()')
-                except SystemExit:
-                    logging.warn('Script called bail()')
-                    break
-                except nelly.error as e:
-                    logging.error('%s', e)
-                    break
-                count += 1
-                variables['$count'] = count
-        except KeyboardInterrupt:
-            pass
-        t2 = time.time()
-
-        logging.info('Ran %d iterations in %.2f seconds (%.2f tps)', count, t2 - t1, count / (t2 - t1))
-
-    return 0
-
-
-def entry():
     try:
-        sys.exit(main())
+        if args.dictionary:
+            dictionary = nelly.Dictionary(args.dictionary)
+            dictionary.Walk(program)
+        else:
+            logging.debug('Executing program')
+            count = 0
+            t1 = time.time()
+            try:
+                while args.count <=0 or count < args.count:
+                    sandbox = nelly.Sandbox(variables)
+                    try:
+                        sandbox.Execute(program)
+                    except SystemError:
+                        logging.warn('Script called fail()')
+                    except SystemExit:
+                        logging.warn('Script called bail()')
+                        break
+                    except nelly.error as e:
+                        logging.error('%s', e)
+                        break
+                    count += 1
+                    variables['$count'] = count
+            except KeyboardInterrupt:
+                pass
+            t2 = time.time()
+
+            logging.info('Ran %d iterations in %.2f seconds (%.2f tps)', count, t2 - t1, count / (t2 - t1))
     except nelly.error as e:
         logging.error('%s', e)
         sys.exit(-1)
+
+    return 0

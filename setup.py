@@ -30,7 +30,7 @@ setup(
     url              = 'https://github.com/moertle/nelly',
     entry_points = {
         'console_scripts' : [
-            'nelly = nelly.main:entry',
+            'nelly = nelly.main:main',
             ]
         },
     packages = [
