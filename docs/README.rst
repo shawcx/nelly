@@ -3,7 +3,7 @@ nelly
 =====
 A grammar-based generator.
 --------------------------
-Matthew Shaw <moertle@gmail.com>
+Matthew Shaw <mshaw.cx@gmail.com>
 
 .. code-block::
 
