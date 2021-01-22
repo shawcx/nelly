@@ -38,8 +38,12 @@ class Dictionary:
             for string in strings:
                 escaped = []
                 for s in string:
-                    if not 0x20 < ord(s) < 0x7f:
+                    if not 0x1f < ord(s) < 0x7f:
                         s = '\\x%.2X' % ord(s)
+                    elif s == '"':
+                        s = '\\"'
+                    elif s == '\\':
+                        s = '\\\\'
                     escaped.append(s)
                 string = ''.join(escaped)
                 idx += 1
