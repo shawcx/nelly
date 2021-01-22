@@ -8,10 +8,16 @@ import logging
 
 import nelly
 
+# convert punctuation to underscore
+p = '!"#$%&\'()*+,-./:;<=>?@[\\]^`{|}~'
+remove = str.maketrans(p, '_' * len(p))
+
 
 class Dictionary:
     def __init__(self, output):
         self.output = output
+        prefix = os.path.basename(output)
+        self.name = prefix.translate(remove)
 
     def Walk(self, program):
         strings = set()
@@ -26,9 +32,15 @@ class Dictionary:
         strings.sort()
 
         logging.info('Writing dictionary: %s', self.output)
+
         with open(self.output, 'w') as fp:
+            idx = 0
             for string in strings:
-                if string == '\x00':
-                    continue
-                fp.write(string)
-                fp.write('\n')
+                escaped = []
+                for s in string:
+                    if not 0x20 < ord(s) < 0x7f:
+                        s = '\\x%.2X' % ord(s)
+                    escaped.append(s)
+                string = ''.join(escaped)
+                idx += 1
+                fp.write('%s_%d="%s"\n' % (self.name, idx, string))

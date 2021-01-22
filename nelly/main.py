@@ -73,6 +73,7 @@ def main(argv=None):
     else:
         path = os.path.expanduser(args.grammar)
         path = os.path.abspath(path)
+
         # insert root directory for relative imports related to the grammar
         sys.path.insert(0, os.path.dirname(path))
         try:
@@ -116,6 +117,6 @@ def main(argv=None):
             logging.info('Ran %d iterations in %.2f seconds (%.2f tps)', count, t2 - t1, count / (t2 - t1))
     except nelly.error as e:
         logging.error('%s', e)
-        sys.exit(-1)
+        return -1
 
     return 0
