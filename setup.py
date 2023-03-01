@@ -27,7 +27,7 @@ setup(
     license          = __license__,
     description      = 'Python Test Case Generator',
     long_description = open('docs/README.rst').read(),
-    url              = 'https://github.com/moertle/nelly',
+    url              = 'https://github.com/shawcx/nelly',
     entry_points = {
         'console_scripts' : [
             'nelly = nelly.main:main',
