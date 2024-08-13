@@ -1,6 +1,8 @@
 *.pyc
 /MANIFEST
 /build
+/deb_dist
 /dist
-/nelly.egg-info
+/*.egg-info
+/*.tar.gz
 .DS_Store
