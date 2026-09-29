@@ -1,14 +1,16 @@
-
-//$B(start): $A <% $* = 'aaa' %>;
-//$A(start): '癔' <% $* = 'They said "%s"' % $$ %>;
+// String and byte string escapes. Each result is printed with repr() so the
+// escapes are visible.
+//
+// usage: nelly -c 5 examples/strings.bnf
 
 A(start)
-    : '\u8888'
-    | '\U00008888'
-    | b'matt\t\'o\xff'
+    : '袈'                  // the same character written with \u ...
+    | '\U00008888'              // ... and with \U
+    | '''triple 'quoted' "string"'''
+    | b'matt\t\'o\xff'          // a byte string
     | b"m\x61tto\tm      \\\'\"\a\b\f\n\r\t\v\xff\x80\xfe"
     ;
 
 <%post
-    print($$)
+    print(repr($$))
 %>

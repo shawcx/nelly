@@ -147,7 +147,7 @@ def test_grammar_parses(path):
 
 
 # examples that run without variables, network access or writing files
-RUNNABLE = ['ab', 'base64', 'class', 'dhcp', 'madlib', 'slice', 'strings']
+RUNNABLE = ['ab', 'base64', 'class', 'dhcp', 'madlib', 'slice', 'strings', 'weights']
 
 
 @pytest.mark.parametrize('name', RUNNABLE)
@@ -155,8 +155,11 @@ def test_example_runs(name, capsys):
     random.seed(0)
     with open(os.path.join(EXAMPLES, name + '.bnf')) as fp:
         program = nelly.Parser([EXAMPLES]).Parse(fp)
-    for _ in range(20):
-        nelly.Sandbox({'$count': 0}).Execute(program)
+    for count in range(20):
+        try:
+            nelly.Sandbox({'$count': count}).Execute(program)
+        except SystemError:
+            pass    # fail() skips a result, as in main()
     assert capsys.readouterr().out
 
 

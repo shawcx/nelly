@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Nelly is a grammar-based test case / fuzz input generator. It reads a BNF-like grammar (`.bnf`) with embedded Python, randomly expands it from a start non-terminal, and runs user Python on the results. It can also emit an AFL dictionary of all literal terminals in a grammar. Pure Python 3, no third-party dependencies. The grammar language is documented in `docs/README.rst` (also the PyPI long description).
+Nelly is a grammar-based test case / fuzz input generator. It reads a BNF-like grammar (`.bnf`) with embedded Python, randomly expands it from a start non-terminal, and runs user Python on the results. It can also emit an AFL dictionary of all literal terminals in a grammar. Pure Python 3, no third-party dependencies. The grammar language is documented in `docs/README.rst`, which is also the PyPI long description, so keep it valid reST: `python -m docutils --halt=warning docs/README.rst /dev/null` (needs `docutils` and `pygments`). Each file in `examples/` starts with a comment giving its usage.
 
 ## Commands
 

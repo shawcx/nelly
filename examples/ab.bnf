@@ -1,3 +1,7 @@
+// Choices, groups and repetition.
+//
+// usage: nelly -c 5 examples/ab.bnf
+
 # This selects A or B
 NT1: 'A' | 'B';
 

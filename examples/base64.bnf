@@ -1,3 +1,8 @@
+// Back references, function calls and variable non-terminals: the same
+// random INPUT is base64 encoded two different ways.
+//
+// usage: nelly -c 5 examples/base64.bnf
+
 include "constants.bnf"
 
 <%pre

@@ -1,3 +1,7 @@
+// Slices, and slicing the result of a function call.
+//
+// usage: nelly examples/slice.bnf
+
 include 'constants.bnf'
 
 <%pre

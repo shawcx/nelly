@@ -1,3 +1,11 @@
+// Choosing an entry point with -s. With no -s, USAGE runs, prints how to use
+// the grammar and calls bail() to stop.
+//
+// usage: nelly -c 10 -s UPNP_HTTP -v prefix=test examples/upnp.bnf
+//        nelly -c 10 -s SEARCH -v prefix=test examples/upnp.bnf
+//
+// output is written to output/upnp/<prefix>/<prefix>-<count>.upnp
+
 include 'protocols/upnp.bnf'
 
 USAGE(start):
@@ -7,8 +15,8 @@ USAGE(start):
       specify -s UPNP_HTTP or -s SEARCH
       use -v prefix=<name>
       output written to output/upnp/<name>/<name>-<count>.upnp
-
     ''')
+    bail()
     %>
     ;
 
@@ -18,8 +26,8 @@ SEARCH: SSDP_DISCOVER;
 
 <%post
     path = 'output/upnp/%s/%s-%.4d.upnp' % ($prefix, $prefix, $count)
-    try:
-        open(path, 'wb').write($$.encode('utf-8'))
-    except FileNotFoundError:
-        os.makedirs(os.path.dirname(path))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'wb') as fp:
+        fp.write($$.encode('utf-8'))
+    print(path)
 %>

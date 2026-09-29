@@ -1,3 +1,8 @@
+// Sending each generated request to a server and printing the response. The
+// bundled HTTP grammar is included and HTTP_HOST and HTTP_BODY are replaced.
+// &host inserts the Python variable set in the pre block.
+//
+// usage: nelly -v host=localhost [-v port=8080] examples/http-post.bnf
 
 include 'constants.bnf'
 include 'protocols/http.bnf'

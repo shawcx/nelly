@@ -1,3 +1,9 @@
+// A variable non-terminal can hold any Python object, not just a string.
+// $CLASS creates an instance of a class defined in the pre block and
+// $INSTANCE calls a method on that same instance through a back reference.
+//
+// usage: nelly -c 5 examples/class.bnf
+
 include "constants.bnf"
 
 <%pre

@@ -1,0 +1,45 @@
+// Weights, empty alternatives, decorators and fail().
+//
+// Generates plausible-looking usernames: most are lowercase, some have a
+// number on the end, and any that come out too short are thrown away.
+//
+// usage: nelly -c 10 examples/weights.bnf
+
+<%pre
+    def lower(s):
+        return s.lower()
+%>
+
+// @lower is applied to every value USERNAME produces
+USERNAME(start, @lower):
+    NAME SEPARATOR SUFFIX
+    <% if len($$) < 5: fail() %>
+    ;
+
+NAME
+    : FIRST             <5>
+    | FIRST LAST        <3>
+    | LAST              <2>
+    ;
+
+FIRST: 'Ada' | 'Alan' | 'Grace' | 'Linus' | 'Ken' | 'Dennis' | 'Barbara';
+LAST:  'Lovelace' | 'Turing' | 'Hopper' | 'Torvalds' | 'Thompson' | 'Ritchie';
+
+// six times as likely to have no separator as either of the others
+SEPARATOR
+    : empty             <6>
+    | '.'               <1>
+    | '_'               <1>
+    ;
+
+SUFFIX
+    : empty             <7>
+    | DIGIT{1,2}        <2>
+    | '1970'            <1>
+    ;
+
+DIGIT: '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+
+<%post
+    print($$)
+%>

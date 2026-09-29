@@ -1,23 +1,26 @@
-include "constants.bnf"
+// Writing each result to its own file. Reading $out in the pre block makes
+// nelly stop with an error if -v out=... was not given.
+//
+// usage: nelly -c 5 -v out=/tmp/html examples/html.bnf
 
-// Usage: nelly -v path=. examples/html.bnf
+include "constants.bnf"
 
 <%pre
     import base64
-    # ensure that $path is defined before running
-    $path
+    import html
+    $out
 %>
 
 HTML_START(start)
-    : "<html>" CRLF HEAD CRLF BODYTAG CRLF "</html>"
+    : "<html>" CRLF HEAD CRLF BODYTAG CRLF "</html>" CRLF
     ;
 
 HEAD
-    : "<head>" CRLF "<title>" TITLE "</title>" CRLF "</head>"
+    : "<head>" CRLF "<title>" $TITLE "</title>" CRLF "</head>"
     ;
 
-TITLE
-    : RANDCHAR{5,10}
+$TITLE
+    : RANDCHAR{5,10} <% $* = html.escape($$) %>
     ;
 
 BODYTAG
@@ -33,10 +36,9 @@ $ENCODER
     ;
 
 <%post
-    fullPath = os.path.join($path, 'test.html')
-
-    print(fullPath)
-    print()
-    print($$)
-    print()
+    os.makedirs($out, exist_ok=True)
+    path = os.path.join($out, 'test-%.4d.html' % $count)
+    with open(path, 'w') as fp:
+        fp.write($$)
+    print(path)
 %>

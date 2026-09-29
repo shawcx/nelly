@@ -1,54 +1,172 @@
 =====
 nelly
 =====
-A grammar-based generator.
---------------------------
+A grammar-based test case generator.
+------------------------------------
 Matthew Shaw <mshaw.cx@gmail.com>
 
+Nelly reads a BNF-style grammar, expands it at random from a starting
+non-terminal, and hands each result to embedded Python code. It is useful for
+producing fuzzing inputs, protocol messages, and test data: anything that has
+structure but should vary on every run. It can also export the literal strings
+in a grammar as an `AFL <https://github.com/google/AFL>`_ dictionary.
+
+Nelly is pure Python 3 with no dependencies.
+
+.. contents::
+   :local:
+   :depth: 1
+
+Installation
+============
+
+.. code-block:: sh
+
+    pip install nelly          # from PyPI
+    pip install .              # from a source checkout
+
+This installs a ``nelly`` command. From a checkout you can also run
+``python3 nelly.py`` without installing.
+
+Quick start
+===========
+
+Save this as ``hello.bnf``:
+
 .. code-block::
 
-  <%pre
-      import sys
-  %>
+    GREETING(start): SALUTATION ', ' NAME PUNCTUATION;
 
-  ::NT(start)
-      : 'A' # comment
-      | 'B' <% print($$) %>
-      ;
+    SALUTATION: 'Hello' | 'Hi' | 'Greetings';
+    NAME:       'world' | 'nelly' | 'there';
+    PUNCTUATION: '!' <3> | '.' <1>;   // '!' is three times as likely
 
-  <%post
-      print($$)
-  %>
+    <%post
+        print($$)
+    %>
 
-Constants
-=========
+Then generate five strings:
 
-Constants in productions can consist of double-quoted strings, single-quoted strings, decimal, hexadecimal.
+.. code-block:: sh
+
+    $ nelly -c 5 hello.bnf
+    Hi, there!
+    Hello, nelly!
+    Hi, there!
+    Hello, nelly.
+    Hello, nelly!
+
+``$$`` holds the result of the last expansion; in a ``post`` block that is the
+whole generated string. Nelly's own log messages go to stderr, so stdout
+contains only what the grammar prints.
+
+Command line
+============
 
 .. code-block::
 
-    A: "A" | 'A' | \d65 | \x41;
+    nelly [options] [grammar]
+
+The grammar is read from stdin if no file is given.
+
+====================================  ============================================
+Option                                Description
+====================================  ============================================
+``-c N``, ``--count N``               Generate N results (default 1). 0 or less
+                                      runs until interrupted or ``bail()``.
+``-s NAME``, ``--start NAME``         Use NAME as the entry point instead of those
+                                      marked ``start``. May be repeated.
+``-v KEY=VALUE``, ``--vars``          Set the variable ``$KEY`` for code blocks.
+                                      May be repeated.
+``-i DIR``, ``--include DIR``         Add a directory to search for ``include``.
+                                      May be repeated.
+``-e ENC``, ``--encode ENC``          Produce ``bytes``: strings are encoded with
+                                      ENC (e.g. ``latin-1``). See `Binary output`_.
+``-d FILE``, ``--dictionary FILE``    Write an AFL dictionary instead of
+                                      generating. See `AFL dictionaries`_.
+``-D``, ``--debug``                   Enable debug logging.
+====================================  ============================================
+
+Grammar basics
+==============
+
+A grammar is a list of definitions. Each one names a non-terminal and lists
+one or more alternatives separated by ``|``, ending with ``;``:
+
+.. code-block::
+
+    NAME: alternative | alternative | ... ;
+
+Any definition marked with the ``start`` option is an entry point. If there
+are several, one is chosen at random for each result.
+
+.. code-block::
+
+    REQUEST(start): 'GET ' PATH;
+    PATH: '/' | '/index.html';
+
+Comments start with ``//`` or ``#`` and run to the end of the line.
+``/* ... */`` comments may be nested but are only allowed between
+definitions, not inside one.
+
+If a name is defined twice, the later definition wins. This lets a grammar
+include another and replace parts of it (see `Includes`_).
+
+Terminals
+---------
+
+.. code-block::
+
+    A: "A" | 'A' | '''A''' | \d65 | \x41;
+
+Strings may use single, double or triple quotes and support the usual Python
+escapes (``\n``, ``\t``, ``\xNN``, ``\uNNNN``, ``\UNNNNNNNN``, ...). ``\dNN``
+and ``\xNN`` outside quotes produce a single character from a decimal or
+hexadecimal code.
+
+Byte strings use a ``b`` prefix and produce ``bytes``:
+
+.. code-block::
+
+    MAGIC: b'\x89PNG\r\n\x1a\n';
+
+Numbers (``65``, ``0x41``, ``0b1000001``, ``0101``, ``6.5``) are also
+terminals. They are mostly useful as arguments to `Function calls`_; a number
+cannot be concatenated with a string.
 
 Concatenation
-=============
+-------------
 
-Productions are concatenated when they are seperated by white-space.
-
-.. code-block::
-
-    CONCAT: "CONC" \x41 "TEN" \d65 "TION";
-
-Selection
-=========
-
-When multiple productions are present one is chosen at random.
+Items separated by white-space are concatenated.
 
 .. code-block::
 
-    NUMBER: '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+    CONCAT: "CONC" \x41 "TEN" \d65 "TION";   // CONCATENATION
+
+Selection and weights
+---------------------
+
+When there are several alternatives one is chosen at random. By default every
+alternative is equally likely; a weight in angle brackets changes that.
+Weights are relative to each other.
+
+.. code-block::
+
+    DIGIT: '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+
+    COIN:  'heads' <1> | 'tails' <1>;
+    DICE:  'six' <1> | 'other' <5>;
+
+``empty`` is an explicit alternative that produces nothing:
+
+.. code-block::
+
+    SIGN: '-' | '+' | empty;
 
 Grouping
-========
+--------
+
+Parentheses create an unnamed choice inside an alternative.
 
 .. code-block::
 
@@ -56,20 +174,24 @@ Grouping
 
 Possible values are 'AC', 'AD', 'BC', or 'BD'.
 
-Ranges
-======
+Repetition
+----------
+
+``{n}`` repeats the preceding item exactly n times; ``{n,m}`` repeats it a
+random number of times between n and m. Each repetition is expanded
+separately.
 
 .. code-block::
 
-    NUM1: ('0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|'8'|'9'){3};
-    NUM2: ('0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|'8'|'9'){1,5};
-
-NUM1 will generate a 3-digit number while NUM2 will generate a number of random length between 1 and 5 digits.
+    NUM1: DIGIT{3};          // three digits, e.g. 042
+    NUM2: DIGIT{1,5};        // one to five digits
+    OPTIONAL: 'x'{0,1};      // 'x' or nothing
+    DIGIT: '0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|'8'|'9';
 
 Slicing
-=======
+-------
 
-A sub-string of a production can be referenced using indices.
+Python-style slices take part of the preceding item.
 
 .. code-block::
 
@@ -83,43 +205,64 @@ A sub-string of a production can be referenced using indices.
     SLICE8: "0123456789" [:-4];  // 012345
     SLICE9: "0123456789" [2:-2]; // 234567
 
-The output of each production is documented in the comment proceeding it.
+Slices and repetition can be combined: ``'abc'[1:]{2}`` produces ``bcbc``.
 
-Inline Python
-=============
+Non-terminals and back references
+---------------------------------
 
-.. code-block::
-
-    <%pre
-        import base64
-    %>
-
-    NT: %base64.b64encode('string');
-
-Non-Terminals
-=============
+Using a name expands that non-terminal. Every use is expanded again, so it
+may produce a different value each time.
 
 .. code-block::
 
     NT1: "The value of NT2 is " NT2;
     NT2: "substitution";
 
-Semantic Actions
-================
-
-$$
+A back reference, ``\NAME``, repeats the value that ``NAME`` most recently
+produced instead of expanding it again:
 
 .. code-block::
 
-    PSA1: PSA2 <% var = $$ %>;
-    PSA2: "one" | "two";
+    BR: "A" | "B";
+    NT: BR \BR;
 
-In this example the Python variable **var** will contain either 'one' or 'two' for future use.
+``NT`` generates 'AA' or 'BB' but never 'AB' or 'BA'.
 
-Variable Non-Terminals
-======================
+Embedded Python
+===============
 
-$*
+Code blocks
+-----------
+
+``<%pre ... %>`` runs before each result is generated and ``<%post ... %>``
+runs after. All code blocks for a result share one namespace, so anything
+defined in ``pre`` can be used later. The namespace is fresh for every
+result, and ``nelly`` itself is always available.
+
+.. code-block::
+
+    <%pre
+        import random
+        import struct
+    %>
+
+A block of code after an alternative is a semantic action. It runs after that
+alternative is expanded, with the result in ``$$``:
+
+.. code-block::
+
+    PSA1: PSA2 "/" &var;
+    PSA2: ("one" | "two") <% var = $$ %>;   // PSA1 is one/one or two/two
+
+The indentation of the first line of a block is removed from every line, so
+blocks can be indented to match the grammar.
+
+Variable non-terminals
+----------------------
+
+Assigning to ``$$`` does not change the generated value. To transform a value
+with Python, use a variable non-terminal: its name starts with ``$`` and its
+value is whatever the action stores in ``$*``.
 
 .. code-block::
 
@@ -132,18 +275,205 @@ $*
       %>
       ;
 
-
-Back Reference
-==============
-
-.. code-block::
-
-    BR: "A" | "B";
-    NT: BR \BR;
+The value in ``$*`` may be any Python object; it does not have to be a
+string. Back references work with variable non-terminals too:
 
 .. code-block::
 
     $BR: ("a"|"b") <% $* = $$.upper() %>;
-    NT: $BR \$BR;
+    NT: $BR \$BR;   // AA or BB
 
-In both cases **NT** will generate the string 'AA' or 'BB' but not 'AB' or 'BA'.
+Function calls
+--------------
+
+``%name(...)`` calls a Python function with the expanded arguments and uses
+its return value. The function can be a builtin, something imported in a
+``pre`` block, or something defined there.
+
+.. code-block::
+
+    <%pre
+        import base64
+    %>
+
+    ENCODED: %base64.b64encode(b'string');     // b'c3RyaW5n'
+    LENGTH:  %str(%len(WORD)) ' bytes';
+    OCTET:   %chr(%random.randint(0, 255));    // needs `import random`
+
+Each argument is a full expression, so it may use concatenation, choices,
+repetition and other calls.
+
+References
+----------
+
+``&name`` inserts the value of a Python variable or attribute without
+calling it.
+
+.. code-block::
+
+    <%pre
+        import os
+        host = 'example.com'
+    %>
+
+    URL: 'http://' &host '/';
+    SEP: &os.sep;
+
+Decorators
+----------
+
+A function named in a definition's options with ``@`` is applied to every
+value that definition produces:
+
+.. code-block::
+
+    <%pre
+        def shout(s):
+            return s.upper() + '!'
+    %>
+
+    GREETING(start, @shout): 'hello' | 'hi';   // HELLO! or HI!
+
+Variables
+---------
+
+Code blocks can read and write variables as ``$name``. ``-v name=value`` on
+the command line sets ``$name``, and ``$count`` is the number of the result
+being generated, starting from 0. Reading a variable that was never set is an
+error, which makes a convenient check for required options:
+
+.. code-block::
+
+    // usage: nelly -v out=DIR grammar.bnf
+    <%pre
+        $out
+    %>
+
+Stopping early
+--------------
+
+``bail()`` ends the run and ``fail()`` throws away the current result and
+moves on to the next one. Both can be called from any code block or function.
+
+.. code-block::
+
+    ID(start): DIGIT{1,3} <% if $$.startswith('0'): fail() %>;
+
+    <%post
+        print($$)
+        if $count == 99:
+            bail()
+    %>
+
+Any other exception in a semantic action is logged and ends the run.
+
+Binary output
+=============
+
+By default nelly builds ``str`` values. To build ``bytes`` instead, set
+``nelly.encode`` to an encoding, either with ``-e`` or in a ``pre`` block.
+Every string is then encoded as it is produced, so strings, byte strings and
+the results of functions such as ``struct.pack`` can be mixed freely.
+
+.. code-block::
+
+    include 'pack.bnf'
+
+    <%pre
+        import struct
+        nelly.encode = 'latin-1'
+    %>
+
+    RECORD(start): b'\x7fREC' %BWORD(%len(NAME)) \NAME;
+    NAME: 'alice' | 'bob';
+
+    <%post
+        nelly.hexdump($$)
+    %>
+
+``nelly.hexdump(data)`` prints a hex and ASCII dump of a ``bytes`` value.
+
+Includes
+========
+
+``include 'file.bnf'`` parses another grammar in place. The file is searched
+for in the including file's directory, then each ``-i`` directory (the
+current directory by default), then nelly's bundled grammars.
+
+Because later definitions replace earlier ones, a grammar can include a
+library and override pieces of it:
+
+.. code-block::
+
+    include 'protocols/http.bnf'
+
+    HTTP_HOST: 'localhost';
+
+Bundled grammars
+----------------
+
+============================  ==================================================
+File                          Contents
+============================  ==================================================
+``constants.bnf``             ``SP``, ``CR``, ``LF``, ``CRLF``, ``TAB``,
+                              ``NULL``, ``UPPER``, ``LOWER``, ``WORD``,
+                              ``LONGWORD``, ``NUMBER_0_9``, ``RANDCHAR``,
+                              ``RANDBYTE``
+``pack.bnf``                  Python functions ``BYTE``, ``WORD``, ``DWORD``,
+                              ``QWORD`` in native order, with ``L`` and ``B``
+                              prefixes for little- and big-endian (e.g.
+                              ``%BWORD(80)``); needs ``import struct``
+``protocols/http.bnf``        HTTP requests (``HTTP_GET``, ``HTTP_POST``, ...)
+``protocols/dhcp.bnf``        DHCP messages (``DHCP``, ``DHCP_CLIENT``,
+                              ``DHCP_SERVER``)
+``protocols/upnp.bnf``        UPnP and SSDP messages (``UPNP_HTTP_START``,
+                              ``SSDP_DISCOVER``)
+``formats/wmf.bnf``           Windows Metafile documents (``WMF``)
+``ssl/ssl.bnf``               An SSL handshake client that connects to
+                              ``localhost:4433``; needs the ``cryptography``
+                              package
+============================  ==================================================
+
+AFL dictionaries
+================
+
+.. code-block:: sh
+
+    nelly -d http.dict grammar.bnf
+
+writes every literal string in the grammar and its includes to ``http.dict``
+in AFL's dictionary format, one ``name_N="..."`` entry per line, for use with
+``afl-fuzz -x http.dict``. Nothing is generated. Strings are encoded with the
+``-e`` encoding (UTF-8 by default), so use ``-e latin-1`` for binary grammars
+that write bytes with ``\xNN`` escapes.
+
+Examples
+========
+
+The ``examples`` directory has a grammar for each feature:
+
+======================  ==========================================================
+Example                 Shows
+======================  ==========================================================
+``ab.bnf``              Choices, groups and repetition
+``madlib.bnf``          Building a document from nested non-terminals
+``weights.bnf``         Weights, ``empty``, decorators and ``fail()``
+``slice.bnf``           Slices and function calls
+``strings.bnf``         String and byte string escapes
+``base64.bnf``          Back references, functions and variable non-terminals
+``class.bnf``           Variable non-terminals holding Python objects
+``html.bnf``            Writing each result to a file with ``-v``
+``dhcp.bnf``            Binary packets from a bundled protocol grammar
+``http-post.bnf``       Sending generated requests to a server
+``upnp.bnf``            Choosing entry points with ``-s``
+======================  ==========================================================
+
+Each file starts with a comment showing how to run it.
+
+Development
+===========
+
+.. code-block:: sh
+
+    pip install pytest
+    pytest

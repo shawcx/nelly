@@ -1,3 +1,8 @@
+// Building a document out of nested non-terminals. WORD here replaces the
+// WORD defined in constants.bnf because later definitions win.
+//
+// usage: nelly examples/madlib.bnf
+
 include 'constants.bnf'
 
 START(start):
@@ -13,7 +18,7 @@ PARAGRAPH: (SENTENCE SP SP){2,4} SENTENCE;
 
 SENTENCE: SENTENCE_INNER PUNCTUATION;
 
-SENTENCE_INNER(corrupt): (WORD SP){5,20} WORD;
+SENTENCE_INNER: (WORD SP){5,20} WORD;
 
 WORD: "hello" | "cat" | "yellow" | "hop-a-long";
 
