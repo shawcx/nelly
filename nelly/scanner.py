@@ -43,11 +43,11 @@ class Tokens(list):
 
 class Scanner:
     def __init__(self, path):
-        for fn in _functions:
-            _functions[fn] = getattr(self, fn)
+        # use a fresh namespace since eval adds __builtins__ to it
+        actions = {fn: getattr(self, fn) for fn in _functions}
 
         rules = open(path, 'r').read()
-        rules = eval(rules, _functions)
+        rules = eval(rules, actions)
 
         self.states = collections.defaultdict(list)
 

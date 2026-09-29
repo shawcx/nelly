@@ -1,26 +1,282 @@
+/*
+ * DHCP messages (RFC 2131) with options from RFC 2132.
+ *
+ * Generates the UDP payload. Entry points:
+ *   DHCP         any message type
+ *   DHCP_CLIENT  DISCOVER, REQUEST, DECLINE, RELEASE, INFORM
+ *   DHCP_SERVER  OFFER, ACK, NAK
+ */
+
+include 'pack.bnf'
+
 <%pre
-    import socket
+    import random
+    import struct
+
+    # the packet is binary, so encode any str terminals
+    if not nelly.encode:
+        nelly.encode = 'latin-1'
+
+    def DHCP_OPT(code, data):
+        return BBYTE(code) + BBYTE(len(data)) + data
+
+    def DHCP_PAD(data, size):
+        return data[:size].ljust(size, b'\x00')
+
+    def DHCP_HEX(digits):
+        return '%0*x' % (digits, random.getrandbits(4 * digits))
 %>
 
-DHCP(start)
-    : OP HTYPE HLEN HOPS XID SECS FLAGS
+DHCP
+    : DHCP_CLIENT <60>
+    | DHCP_SERVER <40>
     ;
 
+DHCP_CLIENT
+    : DHCP_DISCOVER <40>
+    | DHCP_REQUEST  <40>
+    | DHCP_DECLINE  <5>
+    | DHCP_RELEASE  <5>
+    | DHCP_INFORM   <10>
+    ;
 
-CIADDR: "(Client IP address)";
+DHCP_SERVER
+    : DHCP_OFFER <45>
+    | DHCP_ACK   <45>
+    | DHCP_NAK   <10>
+    ;
 
-YIADDR: "(Your IP address)";
+// -----------------------------------------------------------------------------
+//
+// MESSAGES
+//
+// the header must come first: the client identifier option refers back to the
+// MAC address generated for chaddr
+//
 
-SIADDR: "(Server IP address)";
+DHCP_DISCOVER:
+    DHCP_BOOTREQUEST
+    %DHCP_OPT(53, b'\x01')
+    DHCP_OPT_CLIENT_ID
+    DHCP_OPTS_CLIENT
+    DHCP_OPT_PARAM_LIST
+    DHCP_END
+    ;
 
-GIADDR: "(Gateway IP address)";
+DHCP_REQUEST:
+    DHCP_BOOTREQUEST
+    %DHCP_OPT(53, b'\x03')
+    DHCP_OPT_CLIENT_ID
+    DHCP_OPT_REQUESTED_IP
+    DHCP_OPT_SERVER_ID
+    DHCP_OPTS_CLIENT
+    DHCP_OPT_PARAM_LIST
+    DHCP_END
+    ;
 
-CHADDR: "(Client hardware address)";
+DHCP_DECLINE:
+    DHCP_BOOTREQUEST
+    %DHCP_OPT(53, b'\x04')
+    DHCP_OPT_CLIENT_ID
+    DHCP_OPT_REQUESTED_IP
+    DHCP_OPT_SERVER_ID
+    DHCP_END
+    ;
 
-0x00053C04
-0x8D590000
-0x00000000
-0x00000000
-192 octets of 0s, or overflow space for additional options; BOOTP legacy.
-Magic cookie
-0x63825363
+DHCP_RELEASE:
+    DHCP_BOOTREQUEST
+    %DHCP_OPT(53, b'\x07')
+    DHCP_OPT_CLIENT_ID
+    DHCP_OPT_SERVER_ID
+    DHCP_END
+    ;
+
+DHCP_INFORM:
+    DHCP_BOOTREQUEST
+    %DHCP_OPT(53, b'\x08')
+    DHCP_OPT_CLIENT_ID
+    DHCP_OPTS_CLIENT
+    DHCP_OPT_PARAM_LIST
+    DHCP_END
+    ;
+
+DHCP_OFFER:
+    DHCP_BOOTREPLY
+    %DHCP_OPT(53, b'\x02')
+    DHCP_OPT_SERVER_ID
+    DHCP_OPT_LEASE
+    DHCP_OPTS_SERVER
+    DHCP_END
+    ;
+
+DHCP_ACK:
+    DHCP_BOOTREPLY
+    %DHCP_OPT(53, b'\x05')
+    DHCP_OPT_SERVER_ID
+    DHCP_OPT_LEASE
+    DHCP_OPTS_SERVER
+    DHCP_END
+    ;
+
+DHCP_NAK:
+    DHCP_BOOTREPLY
+    %DHCP_OPT(53, b'\x06')
+    DHCP_OPT_SERVER_ID
+    DHCP_OPT_MESSAGE{0,1}
+    DHCP_END
+    ;
+
+DHCP_OPTS_CLIENT:
+    ( DHCP_OPT_HOSTNAME
+    | DHCP_OPT_MAX_SIZE
+    | DHCP_OPT_VENDOR_CLASS
+    ){0,3}
+    ;
+
+DHCP_OPTS_SERVER:
+    DHCP_OPT_SUBNET
+    DHCP_OPT_ROUTER
+    DHCP_OPT_DNS
+    ( DHCP_OPT_DOMAIN
+    | DHCP_OPT_RENEWAL
+    | DHCP_OPT_REBINDING
+    ){0,3}
+    ;
+
+// -----------------------------------------------------------------------------
+//
+// FIXED HEADER (236 bytes) AND MAGIC COOKIE
+//
+
+DHCP_BOOTREQUEST: b'\x01' DHCP_HEADER;
+DHCP_BOOTREPLY:   b'\x02' DHCP_HEADER;
+
+DHCP_HEADER:
+    b'\x01'                     // htype: ethernet
+    b'\x06'                     // hlen
+    DHCP_HOPS
+    DHCP_XID
+    DHCP_SECS
+    DHCP_FLAGS
+    DHCP_ADDR                   // ciaddr
+    DHCP_ADDR                   // yiaddr
+    DHCP_ADDR                   // siaddr
+    DHCP_ADDR                   // giaddr
+    %DHCP_PAD(DHCP_MAC, 16)     // chaddr
+    DHCP_SNAME
+    DHCP_FILE
+    b'\x63\x82\x53\x63'         // magic cookie
+    ;
+
+DHCP_HOPS
+    : b'\x00'                              <90>
+    | %BBYTE(%random.randint(1, 16))       <10>
+    ;
+
+DHCP_XID: %BDWORD(%random.getrandbits(32));
+
+DHCP_SECS
+    : b'\x00\x00'                          <70>
+    | %BWORD(%random.randint(1, 0xffff))   <30>
+    ;
+
+DHCP_FLAGS
+    : b'\x00\x00'   // unicast
+    | b'\x80\x00'   // broadcast
+    ;
+
+DHCP_SNAME
+    : %bytes(64)                           <80>
+    | %DHCP_PAD(DHCP_HOSTNAME, 64)         <20>
+    ;
+
+DHCP_FILE
+    : %bytes(128)                          <80>
+    | %DHCP_PAD(DHCP_BOOTFILE, 128)        <20>
+    ;
+
+DHCP_BOOTFILE: "pxelinux.0" | "bootx64.efi" | "undionly.kpxe" | "ipxe.efi";
+
+// -----------------------------------------------------------------------------
+//
+// OPTIONS
+//
+
+DHCP_OPT_SUBNET:        %DHCP_OPT(1, DHCP_NETMASK);
+DHCP_OPT_ROUTER:        %DHCP_OPT(3, DHCP_IP{1,3});
+DHCP_OPT_DNS:           %DHCP_OPT(6, DHCP_IP{1,3});
+DHCP_OPT_HOSTNAME:      %DHCP_OPT(12, DHCP_HOSTNAME);
+DHCP_OPT_DOMAIN:        %DHCP_OPT(15, DHCP_DOMAIN);
+DHCP_OPT_REQUESTED_IP:  %DHCP_OPT(50, DHCP_IP);
+DHCP_OPT_LEASE:         %DHCP_OPT(51, DHCP_LEASE_TIME);
+DHCP_OPT_SERVER_ID:     %DHCP_OPT(54, DHCP_IP);
+DHCP_OPT_PARAM_LIST:    %DHCP_OPT(55, DHCP_PARAM{1,12});
+DHCP_OPT_MESSAGE:       %DHCP_OPT(56, DHCP_NAK_MESSAGE);
+DHCP_OPT_MAX_SIZE:      %DHCP_OPT(57, %BWORD(%random.randint(576, 1500)));
+DHCP_OPT_RENEWAL:       %DHCP_OPT(58, DHCP_LEASE_TIME);
+DHCP_OPT_REBINDING:     %DHCP_OPT(59, DHCP_LEASE_TIME);
+DHCP_OPT_VENDOR_CLASS:  %DHCP_OPT(60, DHCP_VENDOR_CLASS);
+DHCP_OPT_CLIENT_ID:     %DHCP_OPT(61, b'\x01' \DHCP_MAC);   // type 1: ethernet
+
+DHCP_END: b'\xff';
+
+DHCP_PARAM
+    : b'\x01' <10>   // subnet mask
+    | b'\x03' <10>   // router
+    | b'\x06' <10>   // domain name server
+    | b'\x0c' <5>    // host name
+    | b'\x0f' <10>   // domain name
+    | b'\x1c' <5>    // broadcast address
+    | b'\x2a' <5>    // NTP servers
+    | b'\x33' <5>    // lease time
+    | b'\x3a' <5>    // renewal time
+    | b'\x3b' <5>    // rebinding time
+    | b'\x77' <5>    // domain search
+    | %BBYTE(%random.randint(1, 254)) <5>
+    ;
+
+// -----------------------------------------------------------------------------
+//
+// VALUES
+//
+
+DHCP_ADDR
+    : b'\x00\x00\x00\x00' <50>
+    | DHCP_IP             <50>
+    ;
+
+DHCP_IP
+    : b'\xc0\xa8' DHCP_OCTET DHCP_OCTET   <40>   // 192.168.0.0/16
+    | b'\x0a' DHCP_OCTET{3}               <30>   // 10.0.0.0/8
+    | %BDWORD(%random.getrandbits(32))    <30>
+    ;
+
+DHCP_NETMASK
+    : b'\xff\xff\xff\x00' <60>
+    | b'\xff\xff\x00\x00' <20>
+    | b'\xff\xff\xff\x80' <20>
+    ;
+
+DHCP_LEASE_TIME
+    : %BDWORD(3600)                        <30>
+    | %BDWORD(86400)                       <30>
+    | b'\xff\xff\xff\xff'                  <10>   // infinite
+    | %BDWORD(%random.randint(60, 604800)) <30>
+    ;
+
+DHCP_MAC: DHCP_OCTET{6};
+
+DHCP_OCTET: %BBYTE(%random.randint(0, 255));
+
+DHCP_HOSTNAME: ("host" | "pc" | "laptop" | "android") "-" %DHCP_HEX(6);
+
+DHCP_DOMAIN: "example.com" | "example.net" | "corp.example.org" | "local";
+
+DHCP_VENDOR_CLASS
+    : "MSFT 5.0"
+    | "android-dhcp-14"
+    | "udhcp 1.36.1"
+    | "PXEClient:Arch:00007:UNDI:003016"
+    ;
+
+DHCP_NAK_MESSAGE: "requested address not available" | "wrong network" | "lease expired";

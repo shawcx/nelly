@@ -4,8 +4,9 @@
 
 import os
 
-DEBUG = False
-root  = os.path.dirname(__file__)
+DEBUG  = False
+root   = os.path.dirname(__file__)
+encode = None
 
 class error(Exception):
     def __init__(self, fmt, *args):

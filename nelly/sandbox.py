@@ -16,6 +16,8 @@ class Sandbox:
     def __init__(self, variables=None):
         self.globals = {
             'nelly' : nelly,
+            'bail'  : nelly.bail,
+            'fail'  : nelly.fail,
         }
         self.globals['_g_var'] = {
             '$NT' : self.Nonterminal,
@@ -44,9 +46,7 @@ class Sandbox:
         self.program = program
 
         for pycode in self.program.preamble:
-            ok = self.__ExecPython(pycode)
-            if ok:
-                raise nelly.error('SystemExit raised on preamble')
+            self.__ExecPython(pycode)
 
         if not self.program.start:
             raise nelly.error('No entry points')
@@ -61,9 +61,7 @@ class Sandbox:
             self.Varterminal(name)
 
         for pycode in self.program.postscript:
-            ok = self.__ExecPython(pycode)
-            if ok:
-                raise nelly.error('SystemExit raised on postscript')
+            self.__ExecPython(pycode)
 
         return self.globals['_g_var'].get('$$')
 
@@ -183,8 +181,9 @@ class Sandbox:
             if name[0] == '$':
                 raise nelly.error('Undeclared variable "%s"', name[1:]) from None
             raise
-        except SystemExit as e:
-            return False if e.code else True
+        except (SystemExit, SystemError):
+            # bail() and fail() are handled by the caller of Execute
+            raise
         except Exception as e:
             logging.error('Unhandled exception in %s', pycode.co_filename[1:-1])
             logging.exception(e)

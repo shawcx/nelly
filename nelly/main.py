@@ -101,9 +101,9 @@ def main(argv=None):
                     try:
                         sandbox.Execute(program)
                     except SystemError:
-                        logging.warn('Script called fail()')
+                        logging.warning('Script called fail()')
                     except SystemExit:
-                        logging.warn('Script called bail()')
+                        logging.warning('Script called bail()')
                         break
                     except nelly.error as e:
                         logging.error('%s', e)

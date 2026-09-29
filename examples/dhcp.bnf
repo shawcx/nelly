@@ -1,0 +1,9 @@
+include 'protocols/dhcp.bnf'
+
+// use -s DHCP_CLIENT or -s DHCP_SERVER to limit the message types
+PACKET(start): DHCP;
+
+<%post
+    nelly.hexdump($$)
+    print()
+%>
