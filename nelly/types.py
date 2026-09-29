@@ -32,8 +32,9 @@ class Nonterminal:
 
 
 class Expression:
-    def __init__(self, location):
+    def __init__(self, location, owner=''):
         self.location   = location
+        self.owner      = owner     # the named non-terminal this belongs to
         self.code       = None
         self.statements = []
         self.weight     = 1

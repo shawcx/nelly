@@ -120,6 +120,29 @@ class TestErrors:
         assert rc == -1
         assert message in caplog.text
 
+    def test_unknown_varterminal(self, run, caplog):
+        rc, out = run("X(start): $Y;")
+        assert 'Unknown varterminal: "$Y"' in caplog.text
+
+    def test_missing_include(self, run, caplog):
+        rc, out = run("include 'nope.bnf'\nX(start): 'a';")
+        assert rc == -1
+        assert "Could not find include file 'nope.bnf'" in caplog.text
+
+    def test_unreadable_include(self, run, caplog, tmp_path):
+        include = tmp_path / 'secret.bnf'
+        include.write_text("Y: 'y';")
+        include.chmod(0)
+        try:
+            if os.access(include, os.R_OK):
+                pytest.skip('running with permission to read any file')
+            rc, out = run("include 'secret.bnf'\nX(start): 'a';")
+        finally:
+            include.chmod(0o644)
+        assert rc == -1
+        assert 'Could not read include file' in caplog.text
+        assert 'Permission denied' in caplog.text
+
     def test_missing_grammar(self, caplog):
         assert nelly.main.main(['/nonexistent/grammar.bnf']) == -1
         assert 'Could not open grammar' in caplog.text
@@ -175,8 +198,12 @@ class TestBytes:
             self.result(r"X(start): \d256;")
 
     def test_join_error(self):
-        with pytest.raises(nelly.error, match='Cannot join str and int at line 1, column 11'):
+        with pytest.raises(nelly.error, match='Cannot join str and int in X at line 1, column 11'):
             self.result("X(start): 'a' 5;")
+
+    def test_join_error_in_group_names_enclosing_nonterminal(self):
+        with pytest.raises(nelly.error, match='Cannot join str and int in Y at line 1, column 18'):
+            self.result("X(start): Y; Y: ('a' 5);")
 
     def test_encode_forces_bytes(self):
         nelly.encode = 'latin-1'

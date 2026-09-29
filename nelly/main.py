@@ -141,8 +141,12 @@ def main(argv=None):
             except IOError:
                 raise nelly.error('Could not open grammar: %s', path) from None
 
-        parser  = nelly.Parser(includes)
-        program = parser.Parse(grammarFile)
+        parser = nelly.Parser(includes)
+        try:
+            program = parser.Parse(grammarFile)
+        finally:
+            if grammarFile is not sys.stdin:
+                grammarFile.close()
 
         if args.start:
             program.start = args.start
@@ -184,7 +188,9 @@ def main(argv=None):
                 output.Close()
             t2 = time.time()
 
-            logging.info('Ran %d iterations in %.2f seconds (%.2f tps)', count, t2 - t1, count / (t2 - t1))
+            elapsed = t2 - t1
+            rate    = count / elapsed if elapsed > 0 else 0.0
+            logging.info('Ran %d iterations in %.2f seconds (%.2f tps)', count, elapsed, rate)
     except nelly.error as e:
         logging.error('%s', e)
         return -1

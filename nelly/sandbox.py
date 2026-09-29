@@ -12,15 +12,16 @@ import nelly
 from .types import *
 
 
-def _join(left, right, location):
+def _join(left, right, expression):
     # text stays str, anything mixed with bytes becomes bytes
     if isinstance(left, str) and isinstance(right, str):
         return left + right
     try:
         return nelly.tobytes(left) + nelly.tobytes(right)
     except TypeError:
-        raise nelly.error('Cannot join %s and %s at line %d, column %d',
-            type(left).__name__, type(right).__name__, *location) from None
+        raise nelly.error('Cannot join %s and %s in %s at line %d, column %d',
+            type(left).__name__, type(right).__name__,
+            getattr(expression, 'owner', '') or '<unknown>', *expression.location) from None
 
 
 class Sandbox:
@@ -99,7 +100,7 @@ class Sandbox:
                             else:
                                 current = statementFunction(self, statement.value, *statement.args)
                                 for idx in range(count - 1):
-                                    current = _join(current, statementFunction(self, statement.value, *statement.args), expression.location)
+                                    current = _join(current, statementFunction(self, statement.value, *statement.args), expression)
                         else:
                             current = current * count
 
@@ -110,7 +111,7 @@ class Sandbox:
             if retval is None or (isinstance(retval, (str, bytes)) and not retval):
                 retval = current
             else:
-                retval = _join(retval, current, expression.location)
+                retval = _join(retval, current, expression)
 
         if retval is None:
             retval = b'' if nelly.encode else ''
@@ -143,7 +144,7 @@ class Sandbox:
         try:
             varterminal = self.program.nonterminals[name]
         except KeyError as e:
-            raise nelly.error('Unknown varterminal: "%s"', name)
+            raise nelly.error('Unknown varterminal: "%s"', name) from None
 
         self.Expression(self.choose(varterminal))
         retval = self.globals['_g_var']['$*']

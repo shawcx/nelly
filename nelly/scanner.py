@@ -20,17 +20,13 @@ def action(fn):
     return fn
 
 
-class Tokens(list):
-    def __init__(self, *args):
-        super(Tokens, self).__init__(*args)
-        self.locations = []
-
+class Tokens(collections.deque):
     def Add(self, token, value, line, col):
-        super(Tokens, self).append((token, value, line, col))
+        self.append((token, value, line, col))
 
     def Next(self):
         try:
-            return self.pop(0)
+            return self.popleft()
         except IndexError:
             raise nelly.error('No more tokens')
 
@@ -46,7 +42,8 @@ class Scanner:
         # use a fresh namespace since eval adds __builtins__ to it
         actions = {fn: getattr(self, fn) for fn in _functions}
 
-        rules = open(path, 'r').read()
+        with open(path, 'r') as fp:
+            rules = fp.read()
         rules = eval(rules, actions)
 
         self.states = collections.defaultdict(list)
@@ -64,15 +61,20 @@ class Scanner:
         self.linenumber = 1
         self.column     = 1
 
-        while stream:
+        # match from a position rather than slicing the stream after each
+        # token, which is quadratic in the size of the grammar
+        pos = 0
+        while pos < len(stream):
             match = None
             # use the patterns from the state at the back of the stack
             for pattern,fn,args in self.states[self.stack[-1]]:
-                match = pattern.match(stream)
+                match = pattern.match(stream, pos)
                 if match:
                     break
 
-            stream = stream[match.end():]
+            if not match or match.end() == pos:
+                raise nelly.error('Syntax error: %r at %d, Column %d', stream[pos], self.linenumber, self.column)
+            pos = match.end()
 
             args = (match.group(),) + args
             try:

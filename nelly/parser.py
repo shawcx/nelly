@@ -105,9 +105,13 @@ class Parser(object):
         # parse zero or more expressions until a semicolon is found
         self._expressions('pipe', 'semicolon', nonterminal)
 
-    def _expressions(self, delimiter, sentinel, nonterminal):
+    def _expressions(self, delimiter, sentinel, nonterminal, owner=None):
+        # groups and function arguments are anonymous, so report errors
+        # against the enclosing named non-terminal
+        owner = owner or nonterminal.name
+
         (token,value,line,col) = self.tokens.Peek()
-        expression = Expression((line,col))
+        expression = Expression((line,col), owner)
 
         while self.tokens:
             (token,value,line,col) = self.tokens.Next()
@@ -117,11 +121,11 @@ class Parser(object):
                 break
             elif delimiter == token:
                 nonterminal.expressions.append(expression)
-                expression = Expression((line,col))
+                expression = Expression((line,col), owner)
             elif 'lparen' == token:
                 anonterminal = Nonterminal(Types.ANONYMOUS)
                 expression.Statement(Types.ANONYMOUS, anonterminal)
-                self._expressions('pipe', 'rparen', anonterminal)
+                self._expressions('pipe', 'rparen', anonterminal, owner)
             elif token in ['start_single_quote', 'start_double_quote', 'start_triple_quote']:
                 quote = self._quote()
                 expression.Statement(Types.TERMINAL, quote)
@@ -136,7 +140,7 @@ class Parser(object):
                 expression.Statement(Types.BACKREFERENCE, value)
             elif 'function' == token:
                 functerminal = Nonterminal(Types.ANONYMOUS)
-                self._expressions('comma', 'rparen', functerminal)
+                self._expressions('comma', 'rparen', functerminal, owner)
                 expression.Statement(Types.FUNCTION, value[1:], functerminal)
             elif 'reference' == token:
                 expression.Statement(Types.REFERENCE, value[1:])
@@ -287,27 +291,22 @@ class Parser(object):
         # get the quoted value
         path = self._quote()
 
-        # try opening the file in each include directory, ignore errors
-        content = None
+        # use the first include directory that has the file
         for include_dir in self.pwd[-1:] + self.include_dirs:
-            try:
-                fullpath = os.path.join(include_dir, path)
-                content = open(fullpath, 'r')
-                logging.debug('Including file %s', repr(fullpath))
+            fullpath = os.path.join(include_dir, path)
+            if os.path.isfile(fullpath):
                 break
-            except:
-                continue
+        else:
+            raise nelly.error('Could not find include file %s', repr(path))
 
-        # if no file was found, throw an error
-        if None == content:
-            raise nelly.error('Could not load file %s', repr(path))
-
-        # ignore empty file
-        if not content:
-            return
+        logging.debug('Including file %s', repr(fullpath))
 
         # compile it inline
-        self.Parse(content)
+        try:
+            with open(fullpath, 'r') as content:
+                self.Parse(content)
+        except OSError as e:
+            raise nelly.error('Could not read include file %s: %s', repr(fullpath), e.strerror) from None
         self.pwd.pop()
 
         # restore the current tokens
