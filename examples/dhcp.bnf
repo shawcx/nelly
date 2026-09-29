@@ -1,14 +1,10 @@
-// Binary packets from a bundled protocol grammar, printed as a hexdump.
+// Binary packets from a bundled protocol grammar.
 //
-// usage: nelly -c 5 examples/dhcp.bnf
-//        nelly -c 5 -s DHCP_CLIENT examples/dhcp.bnf
-//        nelly -c 5 -s DHCP_SERVER examples/dhcp.bnf
+// usage: nelly -c 5 -x examples/dhcp.bnf                      hexdump
+//        nelly -c 5 -x -s DHCP_CLIENT examples/dhcp.bnf       client messages only
+//        nelly -c 5 -x -s DHCP_SERVER examples/dhcp.bnf       server messages only
+//        nelly -c 100 -o 'dhcp/%04d.bin' examples/dhcp.bnf    one file per packet
 
 include 'protocols/dhcp.bnf'
 
 PACKET(start): DHCP;
-
-<%post
-    nelly.hexdump($$)
-    print()
-%>

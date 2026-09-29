@@ -1,4 +1,5 @@
 import glob
+import io
 import os
 import random
 
@@ -86,6 +87,95 @@ class TestControlFlow:
         assert out == ''
 
 
+class TestBytes:
+    def result(self, grammar):
+        with io.StringIO(grammar) as fp:
+            fp.name = '<test>'
+            program = nelly.Parser().Parse(fp)
+        return nelly.Sandbox().Execute(program)
+
+    def test_text_stays_str(self):
+        assert self.result("X(start): 'a' ('b' 'c'){2};") == 'abcbc'
+
+    def test_mixing_promotes_to_bytes(self):
+        assert self.result("X(start): 'GET ' b'\\x00' 'é';") == b'GET \x00\xc3\xa9'
+
+    def test_bytes_then_text(self):
+        assert self.result("X(start): b'\\x01' Y; Y: 'a' 'b';") == b'\x01ab'
+
+    def test_repetition_promotes(self):
+        assert self.result("X(start): ('a' b'b'){2};") == b'abab'
+
+    def test_empty_repetition(self):
+        assert self.result("X(start): b'\\x01' 'a'{0} b'\\x02';") == b'\x01\x02'
+
+    def test_action_sees_str_for_text(self):
+        grammar = "X(start): $Y; $Y: 'a' 'b' <% $* = type($$).__name__ %>;"
+        assert self.result(grammar) == 'str'
+
+    def test_char_constants_are_bytes(self):
+        assert self.result(r"X(start): \xff \d65;") == b'\xffA'
+
+    def test_char_constant_too_large(self):
+        with pytest.raises(nelly.error, match='larger than a byte'):
+            self.result(r"X(start): \d256;")
+
+    def test_join_error(self):
+        with pytest.raises(nelly.error, match='Cannot join str and int at line 1, column 11'):
+            self.result("X(start): 'a' 5;")
+
+    def test_encode_forces_bytes(self):
+        nelly.encode = 'latin-1'
+        assert self.result("X(start): 'é';") == b'\xe9'
+
+
+class TestOutput:
+    GRAMMAR = "X(start): 'n=' $N b'\\x00'; $N: <% $* = str($count) %>;"
+
+    def test_stdout(self, tmp_path, capsysbinary):
+        path = tmp_path / 'grammar.bnf'
+        path.write_text(self.GRAMMAR)
+        nelly.main.main([str(path), '-c', '2', '-o', '-'])
+        assert capsysbinary.readouterr().out == b'n=0\x00n=1\x00'
+
+    def test_text_result_is_encoded(self, tmp_path, capsysbinary):
+        path = tmp_path / 'grammar.bnf'
+        path.write_text("X(start): 'é';")
+        nelly.main.main([str(path), '-o', '-'])
+        assert capsysbinary.readouterr().out == b'\xc3\xa9'
+
+    def test_file_per_result(self, tmp_path):
+        path = tmp_path / 'grammar.bnf'
+        path.write_text(self.GRAMMAR)
+        nelly.main.main([str(path), '-c', '3', '-o', str(tmp_path / 'out' / 'r-%02d.bin')])
+        files = sorted(os.listdir(tmp_path / 'out'))
+        assert files == ['r-00.bin', 'r-01.bin', 'r-02.bin']
+        assert (tmp_path / 'out' / 'r-02.bin').read_bytes() == b'n=2\x00'
+
+    def test_single_file(self, tmp_path):
+        path = tmp_path / 'grammar.bnf'
+        path.write_text(self.GRAMMAR)
+        nelly.main.main([str(path), '-c', '2', '-o', str(tmp_path / 'all.bin')])
+        assert (tmp_path / 'all.bin').read_bytes() == b'n=0\x00n=1\x00'
+
+    def test_failed_results_are_not_written(self, tmp_path, capsysbinary):
+        path = tmp_path / 'grammar.bnf'
+        path.write_text("X(start): 'r' <% if $count == 1: fail() %>;")
+        nelly.main.main([str(path), '-c', '3', '-o', '-'])
+        assert capsysbinary.readouterr().out == b'rr'
+
+    def test_post_can_replace_result(self, tmp_path, capsysbinary):
+        path = tmp_path / 'grammar.bnf'
+        path.write_text("X(start): 'abc';\n<%post\n    $$ = $$.upper()\n%>\n")
+        nelly.main.main([str(path), '-o', '-'])
+        assert capsysbinary.readouterr().out == b'ABC'
+
+    def test_hexdump(self, run):
+        rc, out = run("X(start): b'AB\\x00';", '-x')
+        assert out.startswith('0: 41 42 00 ')
+        assert out.endswith(' AB.\n\n')
+
+
 class TestDictionary:
     def walk(self, tmp_path, grammar):
         path = tmp_path / 'grammar.bnf'
@@ -155,12 +245,13 @@ def test_example_runs(name, capsys):
     random.seed(0)
     with open(os.path.join(EXAMPLES, name + '.bnf')) as fp:
         program = nelly.Parser([EXAMPLES]).Parse(fp)
+    results = []
     for count in range(20):
         try:
-            nelly.Sandbox({'$count': count}).Execute(program)
+            results.append(nelly.Sandbox({'$count': count}).Execute(program))
         except SystemError:
             pass    # fail() skips a result, as in main()
-    assert capsys.readouterr().out
+    assert any(results)
 
 
 class TestDHCP:

@@ -58,7 +58,8 @@ Then generate five strings:
 
 ``$$`` holds the result of the last expansion; in a ``post`` block that is the
 whole generated string. Nelly's own log messages go to stderr, so stdout
-contains only what the grammar prints.
+contains only what the grammar prints. To write results as raw bytes instead
+of printing them, see `Output`_.
 
 Command line
 ============
@@ -80,8 +81,13 @@ Option                                Description
                                       May be repeated.
 ``-i DIR``, ``--include DIR``         Add a directory to search for ``include``.
                                       May be repeated.
-``-e ENC``, ``--encode ENC``          Produce ``bytes``: strings are encoded with
-                                      ENC (e.g. ``latin-1``). See `Binary output`_.
+``-o PATH``, ``--output PATH``        Write each result as bytes to stdout (``-``),
+                                      to one file per result (a path containing
+                                      ``%d``) or all to one file. See `Output`_.
+``-x``, ``--hexdump``                 Print a hexdump of each result.
+``-e ENC``, ``--encode ENC``          Encode text with ENC instead of UTF-8, and
+                                      build every value as ``bytes``. See
+                                      `Text and bytes`_.
 ``-d FILE``, ``--dictionary FILE``    Write an AFL dictionary instead of
                                       generating. See `AFL dictionaries`_.
 ``-D``, ``--debug``                   Enable debug logging.
@@ -120,15 +126,19 @@ Terminals
     A: "A" | 'A' | '''A''' | \d65 | \x41;
 
 Strings may use single, double or triple quotes and support the usual Python
-escapes (``\n``, ``\t``, ``\xNN``, ``\uNNNN``, ``\UNNNNNNNN``, ...). ``\dNN``
-and ``\xNN`` outside quotes produce a single character from a decimal or
-hexadecimal code.
+escapes (``\n``, ``\t``, ``\xNN``, ``\uNNNN``, ``\UNNNNNNNN``, ...). They
+produce text (``str``).
 
 Byte strings use a ``b`` prefix and produce ``bytes``:
 
 .. code-block::
 
     MAGIC: b'\x89PNG\r\n\x1a\n';
+
+``\dNN`` and ``\xNN`` outside quotes produce a single byte from a decimal or
+hexadecimal value up to 255, so ``\xff`` is always the byte ``0xff``. Inside a
+text string, ``'\xff'`` is the character ``ÿ`` and becomes two bytes when
+encoded as UTF-8. See `Text and bytes`_ for how the two are combined.
 
 Numbers (``65``, ``0x41``, ``0b1000001``, ``0101``, ``6.5``) are also
 terminals. They are mostly useful as arguments to `Function calls`_; a number
@@ -141,7 +151,7 @@ Items separated by white-space are concatenated.
 
 .. code-block::
 
-    CONCAT: "CONC" \x41 "TEN" \d65 "TION";   // CONCATENATION
+    CONCAT: "CONC" "A" "TEN" "A" "TION";     // CONCATENATION
 
 Selection and weights
 ---------------------
@@ -367,13 +377,14 @@ moves on to the next one. Both can be called from any code block or function.
 
 Any other exception in a semantic action is logged and ends the run.
 
-Binary output
-=============
+Text and bytes
+==============
 
-By default nelly builds ``str`` values. To build ``bytes`` instead, set
-``nelly.encode`` to an encoding, either with ``-e`` or in a ``pre`` block.
-Every string is then encoded as it is produced, so strings, byte strings and
-the results of functions such as ``struct.pack`` can be mixed freely.
+Text stays ``str`` as long as only text is involved, so semantic actions on
+text work with ordinary strings. When text is joined with ``bytes`` (a byte
+string, a ``\xNN`` constant, or the result of a function such as
+``struct.pack``) the text is encoded as UTF-8 and the result is ``bytes``.
+Joining anything else, such as a number or ``None``, is an error.
 
 .. code-block::
 
@@ -381,17 +392,40 @@ the results of functions such as ``struct.pack`` can be mixed freely.
 
     <%pre
         import struct
-        nelly.encode = 'latin-1'
     %>
 
-    RECORD(start): b'\x7fREC' %BWORD(%len(NAME)) \NAME;
-    NAME: 'alice' | 'bob';
+    RECORD(start): b'\x7fREC' %BWORD(%len(NAME)) \NAME;   // bytes
+    NAME: 'alice' | 'bob';                                // str
 
-    <%post
-        nelly.hexdump($$)
-    %>
+``%len()`` of text counts characters, not bytes, so use
+``%len(%nelly.tobytes(NAME))`` for a length prefix in front of non-ASCII text.
+``nelly.tobytes(value)`` is also handy in Python functions that must accept
+either type.
 
-``nelly.hexdump(data)`` prints a hex and ASCII dump of a ``bytes`` value.
+``-e ENC`` changes the encoding used for text. It also makes every value
+``bytes`` as soon as it is produced, including ``$$`` in semantic actions,
+which older grammars may rely on; setting ``nelly.encode = 'utf-8'`` in a
+``pre`` block does the same.
+
+Output
+======
+
+A grammar can print results itself in a ``post`` block, but for binary data
+it is simpler to let nelly write them. Each result is converted to bytes
+(encoding text as UTF-8) and written to:
+
+.. code-block:: sh
+
+    nelly -o - grammar.bnf                    # stdout, with no separator
+    nelly -c 100 -o 'out/%04d.bin' grammar.bnf  # out/0000.bin ... out/0099.bin
+    nelly -c 100 -o all.bin grammar.bnf       # every result, one after another
+    nelly -c 5 -x grammar.bnf                 # a hexdump of each result
+
+Directories are created as needed. The number in a file name is the same as
+``$count``. Results discarded with ``fail()`` are not written, and a ``post``
+block can assign to ``$$`` to change what is written.
+
+``nelly.hexdump(data)`` prints the same hexdump from Python.
 
 Includes
 ========
@@ -443,9 +477,9 @@ AFL dictionaries
 
 writes every literal string in the grammar and its includes to ``http.dict``
 in AFL's dictionary format, one ``name_N="..."`` entry per line, for use with
-``afl-fuzz -x http.dict``. Nothing is generated. Strings are encoded with the
-``-e`` encoding (UTF-8 by default), so use ``-e latin-1`` for binary grammars
-that write bytes with ``\xNN`` escapes.
+``afl-fuzz -x http.dict``. Nothing is generated. Text is encoded with the
+``-e`` encoding (UTF-8 by default); byte strings and ``\xNN`` constants are
+written exactly.
 
 Examples
 ========

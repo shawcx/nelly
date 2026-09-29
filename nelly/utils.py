@@ -4,6 +4,8 @@
 
 import sys
 
+import nelly
+
 
 def bail():
     raise SystemExit from None
@@ -11,6 +13,15 @@ def bail():
 
 def fail():
     raise SystemError from None
+
+
+def tobytes(value):
+    # str is encoded with -e (or nelly.encode), UTF-8 by default
+    if isinstance(value, str):
+        return value.encode(nelly.encode or 'utf-8')
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value)
+    raise TypeError('cannot convert %s to bytes' % type(value).__name__)
 
 
 def hexdump(blob, width=16, offset=0):

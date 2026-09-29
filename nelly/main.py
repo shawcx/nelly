@@ -12,6 +12,51 @@ import logging
 import nelly
 
 
+class Output:
+    def __init__(self, path, hexdump):
+        self.path    = path
+        self.hexdump = hexdump
+        self.fp      = None
+        if path and path != '-' and '%' not in path:
+            self.fp = self._open(path)
+
+    def Write(self, result, count):
+        if result is None or not (self.path or self.hexdump):
+            return
+        try:
+            data = nelly.tobytes(result)
+        except TypeError:
+            raise nelly.error('Cannot output a result of type %s', type(result).__name__) from None
+
+        if self.hexdump:
+            nelly.hexdump(data)
+            print()
+
+        if self.path == '-':
+            # flush anything printed by the grammar before writing raw bytes
+            sys.stdout.flush()
+            sys.stdout.buffer.write(data)
+            sys.stdout.buffer.flush()
+        elif self.fp:
+            self.fp.write(data)
+        elif self.path:
+            with self._open(self.path % count) as fp:
+                fp.write(data)
+
+    def Close(self):
+        if self.fp:
+            self.fp.close()
+
+    def _open(self, path):
+        directory = os.path.dirname(path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+        try:
+            return open(path, 'wb')
+        except OSError as e:
+            raise nelly.error('Could not open output: %s', e) from None
+
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
@@ -43,6 +88,14 @@ def main(argv=None):
 
     argparser.add_argument('--dictionary', '-d',
         help='Output an AFL dictionary file')
+
+    argparser.add_argument('--output', '-o',
+        help='Write each result as bytes: - for stdout, a path with %%d for '
+             'one file per result, or a path for all results in one file')
+
+    argparser.add_argument('--hexdump', '-x',
+        action='store_true',
+        help='Print a hexdump of each result')
 
     argparser.add_argument('--debug', '-D',
         action='store_true',
@@ -93,13 +146,14 @@ def main(argv=None):
             dictionary.Walk(program)
         else:
             logging.debug('Executing program')
+            output = Output(args.output, args.hexdump)
             count = 0
             t1 = time.time()
             try:
                 while args.count <=0 or count < args.count:
                     sandbox = nelly.Sandbox(variables)
                     try:
-                        sandbox.Execute(program)
+                        output.Write(sandbox.Execute(program), count)
                     except SystemError:
                         logging.warning('Script called fail()')
                     except SystemExit:
@@ -112,6 +166,8 @@ def main(argv=None):
                     variables['$count'] = count
             except KeyboardInterrupt:
                 pass
+            finally:
+                output.Close()
             t2 = time.time()
 
             logging.info('Ran %d iterations in %.2f seconds (%.2f tps)', count, t2 - t1, count / (t2 - t1))

@@ -123,12 +123,14 @@ class Scanner:
     @action
     def AddChar(self, match):
         if match.startswith(r'\x'):
-            match = int(match[2:], 16)
+            value = int(match[2:], 16)
         elif match.startswith(r'\d'):
-            match = int(match[2:])
+            value = int(match[2:])
         else:
             raise SyntaxError(match)
-        self.AddToken(chr(match), 'constant')
+        if value > 0xff:
+            raise SyntaxError(match + ' is larger than a byte')
+        self.AddToken(bytes([value]), 'constant')
 
     @action
     def AddNumber(self, match):

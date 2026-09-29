@@ -13,15 +13,13 @@ include 'pack.bnf'
     import random
     import struct
 
-    # the packet is binary, so encode any str terminals
-    if not nelly.encode:
-        nelly.encode = 'latin-1'
-
+    # text values such as host names arrive as str
     def DHCP_OPT(code, data):
+        data = nelly.tobytes(data)
         return BBYTE(code) + BBYTE(len(data)) + data
 
     def DHCP_PAD(data, size):
-        return data[:size].ljust(size, b'\x00')
+        return nelly.tobytes(data)[:size].ljust(size, b'\x00')
 
     def DHCP_HEX(digits):
         return '%0*x' % (digits, random.getrandbits(4 * digits))

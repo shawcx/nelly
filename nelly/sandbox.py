@@ -12,6 +12,17 @@ import nelly
 from .types import *
 
 
+def _join(left, right, location):
+    # text stays str, anything mixed with bytes becomes bytes
+    if isinstance(left, str) and isinstance(right, str):
+        return left + right
+    try:
+        return nelly.tobytes(left) + nelly.tobytes(right)
+    except TypeError:
+        raise nelly.error('Cannot join %s and %s at line %d, column %d',
+            type(left).__name__, type(right).__name__, *location) from None
+
+
 class Sandbox:
     def __init__(self, variables=None):
         self.globals = {
@@ -66,7 +77,7 @@ class Sandbox:
         return self.globals['_g_var'].get('$$')
 
     def Expression(self, expression):
-        retval = b'' if nelly.encode else ''
+        retval = None
 
         for statement in expression.statements:
             statementFunction = Sandbox.LOOKUP[statement.type]
@@ -88,7 +99,7 @@ class Sandbox:
                             else:
                                 current = statementFunction(self, statement.value, *statement.args)
                                 for idx in range(count - 1):
-                                    current += statementFunction(self, statement.value, *statement.args)
+                                    current = _join(current, statementFunction(self, statement.value, *statement.args), expression.location)
                         else:
                             current = current * count
 
@@ -96,14 +107,13 @@ class Sandbox:
                 if isinstance(current, str):
                     current = current.encode(nelly.encode)
 
-            if retval:
-                try:
-                    retval += current
-                except TypeError as e:
-                    print(e)
-                    raise nelly.error('TypeError at %s', expression.location) from None
-            else:
+            if retval is None or (isinstance(retval, (str, bytes)) and not retval):
                 retval = current
+            else:
+                retval = _join(retval, current, expression.location)
+
+        if retval is None:
+            retval = b'' if nelly.encode else ''
 
         self.globals['_g_var']['$*'] = None
         self.globals['_g_var']['$$'] = retval
