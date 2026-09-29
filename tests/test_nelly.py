@@ -48,11 +48,32 @@ class TestControlFlow:
         rc, out = run("X(start): 'a' <% if $count == 2: nelly.bail() %>;" + POST, '-c', '5')
         assert out == 'a\na\n'
 
-    def test_fail_in_action_skips_iteration(self, run):
-        grammar = "X(start): 'a' <% if $count == 1: fail() %>;" + POST
+    def test_fail_in_action_retries(self, run):
+        # every 'b' is discarded, and -c still produces three results
+        grammar = "X(start): ('a' | 'b') <% if $$ == 'b': fail() %>;" + POST
+        random.seed(0)
         rc, out = run(grammar, '-c', '3')
         assert rc == 0
-        assert out == 'a\na\n'
+        assert out == 'a\na\na\n'
+
+    def test_fail_keeps_count(self, run):
+        grammar = """
+            <%pre
+                import random
+            %>
+            X(start): 'n' <% if random.random() < 0.5: fail() %>;
+            <%post
+                print($count)
+            %>
+            """
+        random.seed(0)
+        rc, out = run(grammar, '-c', '4')
+        assert out == '0\n1\n2\n3\n'
+
+    def test_fail_every_time_stops(self, run, caplog):
+        rc, out = run("X(start): 'a' <% fail() %>;" + POST, '-c', '1')
+        assert out == ''
+        assert 'fail() called 1000 times in a row' in caplog.text
 
     def test_bail_in_nested_action(self, run):
         grammar = "X(start): 'a' Y;\nY: 'b' <% if $count == 1: bail() %>;" + POST
@@ -85,6 +106,39 @@ class TestControlFlow:
     def test_exception_in_action_ends_run(self, run):
         rc, out = run("X(start): 'a' <% 1/0 %>;" + POST, '-c', '3')
         assert out == ''
+
+
+class TestErrors:
+    @pytest.mark.parametrize('grammar, message', [
+        ("X(start): 'a'", 'Missing ";" for the expression starting at line 1, column 11'),
+        ("X(start): ('a' | 'b';", 'Missing ")" before ";" at line 1, column 21'),
+        ("X(start): 'a' \\d300;", 'larger than a byte'),
+        ("X(start) 'a';", 'missing colon'),
+        ])
+    def test_parse_error_is_logged(self, run, caplog, grammar, message):
+        rc, out = run(grammar)
+        assert rc == -1
+        assert message in caplog.text
+
+    def test_missing_grammar(self, caplog):
+        assert nelly.main.main(['/nonexistent/grammar.bnf']) == -1
+        assert 'Could not open grammar' in caplog.text
+
+    def test_var_without_value(self, run, capsys):
+        with pytest.raises(SystemExit):
+            run("X(start): 'a';", '-v', 'foo')
+        assert '--vars expects KEY=VALUE' in capsys.readouterr().err
+
+
+class TestComments:
+    def test_comments_inside_definition(self, run):
+        grammar = """
+            /* before */ X(start) /* options */ : 'a' /* b /* nested */ */ 'b'
+                | /* alternative */ 'a' 'b' // line
+                ; /* after */
+            """ + POST
+        rc, out = run(grammar)
+        assert out == 'ab\n'
 
 
 class TestBytes:
@@ -160,9 +214,10 @@ class TestOutput:
 
     def test_failed_results_are_not_written(self, tmp_path, capsysbinary):
         path = tmp_path / 'grammar.bnf'
-        path.write_text("X(start): 'r' <% if $count == 1: fail() %>;")
+        path.write_text("X(start): ('r' | 'x') <% if $$ == 'x': fail() %>;")
+        random.seed(0)
         nelly.main.main([str(path), '-c', '3', '-o', '-'])
-        assert capsysbinary.readouterr().out == b'rr'
+        assert capsysbinary.readouterr().out == b'rrr'
 
     def test_post_can_replace_result(self, tmp_path, capsysbinary):
         path = tmp_path / 'grammar.bnf'

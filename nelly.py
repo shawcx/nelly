@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import sys
+
 import nelly.main
 
 if '__main__' == __name__:
-    nelly.main.main()
+    sys.exit(nelly.main.main())

@@ -73,8 +73,9 @@ The grammar is read from stdin if no file is given.
 ====================================  ============================================
 Option                                Description
 ====================================  ============================================
-``-c N``, ``--count N``               Generate N results (default 1). 0 or less
-                                      runs until interrupted or ``bail()``.
+``-c N``, ``--count N``               Generate N results (default 1), not counting
+                                      any discarded by ``fail()``. 0 or less runs
+                                      until interrupted or ``bail()``.
 ``-s NAME``, ``--start NAME``         Use NAME as the entry point instead of those
                                       marked ``start``. May be repeated.
 ``-v KEY=VALUE``, ``--vars``          Set the variable ``$KEY`` for code blocks.
@@ -112,8 +113,7 @@ are several, one is chosen at random for each result.
     PATH: '/' | '/index.html';
 
 Comments start with ``//`` or ``#`` and run to the end of the line.
-``/* ... */`` comments may be nested but are only allowed between
-definitions, not inside one.
+``/* ... */`` comments may span lines, be nested, and appear anywhere.
 
 If a name is defined twice, the later definition wins. This lets a grammar
 include another and replace parts of it (see `Includes`_).
@@ -362,8 +362,11 @@ error, which makes a convenient check for required options:
 Stopping early
 --------------
 
-``bail()`` ends the run and ``fail()`` throws away the current result and
-moves on to the next one. Both can be called from any code block or function.
+``bail()`` ends the run. ``fail()`` throws away the current result and tries
+again, so ``-c 10`` still produces 10 results and ``$count`` only advances
+when a result is kept. Both can be called from any code block or function.
+If ``fail()`` is called 1000 times in a row, nelly assumes the grammar can
+never succeed and stops.
 
 .. code-block::
 
@@ -376,6 +379,8 @@ moves on to the next one. Both can be called from any code block or function.
     %>
 
 Any other exception in a semantic action is logged and ends the run.
+Errors in the grammar itself, such as a missing ``;``, are reported with
+their line and column, and nelly exits with a non-zero status.
 
 Text and bytes
 ==============

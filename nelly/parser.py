@@ -9,7 +9,7 @@ import logging
 
 import nelly
 
-from .scanner import Scanner
+from .scanner import Scanner, Tokens
 from .program import Program
 from .types   import *
 
@@ -39,7 +39,9 @@ class Parser(object):
 
         logging.debug('Parsing %s (%d bytes)', grammarFile.name, len(grammar))
 
-        self.tokens = self.scanner.Scan(grammar)
+        # drop /* */ comments so they can appear anywhere
+        comments = ('start_comment', 'comment', 'end_comment')
+        self.tokens = Tokens(t for t in self.scanner.Scan(grammar) if t[0] not in comments)
 
         # keep a reference to the tokens for when included files are parsed
         self.tokens_stack.append(self.tokens)
@@ -66,8 +68,6 @@ class Parser(object):
                     self.program.postscript.append(self._python_code('post'))
                 else:
                     raise nelly.error('Please specify pre or post in code section')
-            elif 'start_comment' == token:
-                self._comment()
             else:
                 raise nelly.error('Unhandled %s %s at %d:%d', token, repr(value), line, col)
 
@@ -158,8 +158,13 @@ class Parser(object):
                 expression.Weight(self._weight())
             elif 'empty' == token:
                 pass
+            elif 'semicolon' == token:
+                raise nelly.error('Missing ")" before ";" at line %d, column %d', line, col)
             else:
                 raise nelly.error('Unhandled token "%s" at line %d, column %d', token, line, col)
+        else:
+            closing = {'semicolon': ';', 'rparen': ')'}[sentinel]
+            raise nelly.error('Missing "%s" for the expression starting at line %d, column %d', closing, *expression.location)
 
     def _quote(self):
         # this will always be the quoted value
@@ -307,15 +312,3 @@ class Parser(object):
 
         # restore the current tokens
         self.tokens = self.tokens_stack[-1]
-
-    #
-    # Multi-line comments
-    #
-    def _comment(self):
-        # consume and disregard the tokens
-        while True:
-            (token,value,line,col) = self.tokens.Next()
-            if 'start_comment' == token:
-                self._comment()
-            if 'end_comment' == token:
-                return

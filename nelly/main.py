@@ -12,6 +12,10 @@ import logging
 import nelly
 
 
+# consecutive fail() calls before giving up
+MAX_FAILURES = 1000
+
+
 class Output:
     def __init__(self, path, hexdump):
         self.path    = path
@@ -73,7 +77,7 @@ def main(argv=None):
 
     argparser.add_argument('--count', '-c',
         type=int, default=1,
-        help='Number of times to run')
+        help='Number of results to generate, 0 for no limit')
 
     argparser.add_argument('--include', '-i',
         action='append', default=['.'],
@@ -116,31 +120,33 @@ def main(argv=None):
     variables = {'$count' : 0}
     if args.vars:
         for var in args.vars:
+            if '=' not in var:
+                argparser.error('--vars expects KEY=VALUE, got %r' % var)
             name,value = var.split('=', 1)
             name = '$'+name
             variables[name] = value
 
-    if args.grammar is None:
-        logging.info('Reading from stdin')
-        grammarFile = sys.stdin
-    else:
-        path = os.path.expanduser(args.grammar)
-        path = os.path.abspath(path)
-
-        # insert root directory for relative imports related to the grammar
-        sys.path.insert(0, os.path.dirname(path))
-        try:
-            grammarFile = open(path, 'r')
-        except IOError:
-            raise nelly.error('Could not open grammar: %s', path)
-
-    parser  = nelly.Parser(includes)
-    program = parser.Parse(grammarFile)
-
-    if args.start:
-        program.start = args.start
-
     try:
+        if args.grammar is None:
+            logging.info('Reading from stdin')
+            grammarFile = sys.stdin
+        else:
+            path = os.path.expanduser(args.grammar)
+            path = os.path.abspath(path)
+
+            # insert root directory for relative imports related to the grammar
+            sys.path.insert(0, os.path.dirname(path))
+            try:
+                grammarFile = open(path, 'r')
+            except IOError:
+                raise nelly.error('Could not open grammar: %s', path) from None
+
+        parser  = nelly.Parser(includes)
+        program = parser.Parse(grammarFile)
+
+        if args.start:
+            program.start = args.start
+
         if args.dictionary:
             dictionary = nelly.Dictionary(args.dictionary)
             dictionary.Walk(program)
@@ -148,6 +154,7 @@ def main(argv=None):
             logging.debug('Executing program')
             output = Output(args.output, args.hexdump)
             count = 0
+            failures = 0
             t1 = time.time()
             try:
                 while args.count <=0 or count < args.count:
@@ -155,13 +162,20 @@ def main(argv=None):
                     try:
                         output.Write(sandbox.Execute(program), count)
                     except SystemError:
-                        logging.warning('Script called fail()')
+                        # fail() discards the result, try again with the same $count
+                        logging.debug('Script called fail()')
+                        failures += 1
+                        if failures == MAX_FAILURES:
+                            logging.error('fail() called %d times in a row, stopping', failures)
+                            break
+                        continue
                     except SystemExit:
                         logging.warning('Script called bail()')
                         break
                     except nelly.error as e:
                         logging.error('%s', e)
                         break
+                    failures = 0
                     count += 1
                     variables['$count'] = count
             except KeyboardInterrupt:
