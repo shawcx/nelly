@@ -509,6 +509,12 @@ Example                 Shows
 
 Each file starts with a comment showing how to run it.
 
+Editor support
+==============
+
+``editors/sublime-text`` is a Sublime Text package that highlights grammars,
+including the embedded Python. See its README for installation.
+
 Development
 ===========
 

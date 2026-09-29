@@ -1,0 +1,118 @@
+// SYNTAX TEST "Packages/Nelly/Nelly.sublime-syntax"
+
+include 'constants.bnf'
+// <- keyword.control.import.nelly
+//      ^^^^^^^^^^^^^^^ string.quoted.single.nelly
+
+# hash comment
+// <- comment.line.nelly
+/* block /* nested */ still comment */
+// <- comment.block.nelly punctuation.definition.comment.begin.nelly
+//          ^^^^^^ comment.block.nelly comment.block.nelly
+//                    ^^^^^^^^^^^^^ comment.block.nelly
+//                                  ^^ punctuation.definition.comment.end.nelly
+
+<%pre
+// <- meta.embedded.python.nelly punctuation.section.embedded.begin.nelly
+//^^^ keyword.control.block.nelly
+    import struct
+//  ^^^^^^^^^^^^^ meta.embedded.python.nelly source.python
+%>
+// <- meta.embedded.python.nelly punctuation.section.embedded.end.nelly - source.python
+
+GREETING(start, @shout): 'hi' | "there" <3> ; // tail
+// <- entity.name.function.nelly
+//      ^ meta.options.nelly punctuation.section.parens.begin.nelly
+//       ^^^^^ meta.options.nelly storage.modifier.nelly
+//            ^ punctuation.separator.nelly
+//              ^ punctuation.definition.annotation.nelly
+//               ^^^^^ variable.annotation.nelly
+//                     ^ punctuation.separator.definition.nelly
+//                       ^^^^ meta.definition.body.nelly string.quoted.single.nelly
+//                            ^ keyword.operator.alternation.nelly
+//                              ^^^^^^^ string.quoted.double.nelly
+//                                      ^ meta.weight.nelly punctuation.definition.weight.begin.nelly
+//                                       ^ constant.numeric.weight.nelly
+//                                          ^ meta.definition.body.nelly punctuation.terminator.nelly
+//                                            ^^^^^^^ comment.line.nelly - meta.definition.body
+
+::HTTP_HOST: &host;
+// <- punctuation.accessor.nelly
+//^^^^^^^^^ entity.name.function.nelly
+//           ^ punctuation.definition.reference.nelly
+//            ^^^^ variable.other.readwrite.nelly
+
+$V: 'x' <% $* = $$.upper() %>;
+// <- entity.name.function.nelly
+//      ^^ punctuation.section.embedded.begin.nelly
+//         ^^ meta.embedded.python.nelly variable.language.nelly
+//              ^^ variable.language.nelly
+//                 ^^^^^ source.python
+//                         ^^ punctuation.section.embedded.end.nelly - source.python
+//                           ^ punctuation.terminator.nelly
+
+BYTES: b'\x00\n' b"q" b'''t''' \xff \d65 '\u8888' ''' x ''';
+//     ^ string.quoted.single.bytes.nelly storage.type.string.nelly
+//       ^^^^ constant.character.escape.nelly
+//           ^^ constant.character.escape.nelly
+//               ^^^^ string.quoted.double.bytes.nelly
+//                    ^^^^^^^^ string.quoted.triple.bytes.nelly
+//                             ^^^^ constant.character.byte.nelly - string
+//                                  ^^^^ constant.character.byte.nelly
+//                                        ^^^^^^ string.quoted.single.nelly constant.character.escape.nelly
+//                                                ^^^^^^^^^ string.quoted.triple.nelly
+
+NUMS: %f(0x41, 0b101, 017, 6.5, -5, 42);
+//    ^ punctuation.definition.function.nelly
+//     ^ variable.function.nelly
+//       ^^^^ meta.function-call.arguments.nelly constant.numeric.hex.nelly
+//           ^ punctuation.separator.arguments.nelly
+//             ^^^^^ constant.numeric.binary.nelly
+//                    ^^^ constant.numeric.octal.nelly
+//                         ^^^ constant.numeric.float.nelly
+//                              ^^ constant.numeric.integer.nelly
+//                                    ^ punctuation.section.arguments.end.nelly
+
+CALL: %struct.pack('!H', %len(\NAME)) \$V $V NAME;
+//     ^^^^^^^^^^^ variable.function.nelly
+//                 ^^^^ meta.function-call.arguments.nelly string.quoted.single.nelly
+//                        ^^^ meta.function-call.arguments.nelly meta.function-call.arguments.nelly variable.function.nelly
+//                            ^^^^^ keyword.other.backref.nelly
+//                                    ^^^ keyword.other.backref.nelly
+//                                        ^^ variable.parameter.varterminal.nelly
+//                                           ^^^^ variable.other.nonterminal.nelly
+
+OPS: (A | empty){1,3} 'abc'[1:-1] ('x' /* c */ 'y');
+//   ^ meta.group.nelly punctuation.section.group.begin.nelly
+//    ^ meta.group.nelly variable.other.nonterminal.nelly
+//        ^^^^^ constant.language.empty.nelly
+//              ^ meta.range.nelly punctuation.section.braces.begin.nelly
+//               ^ meta.range.nelly constant.numeric.integer.nelly
+//                  ^ punctuation.section.braces.end.nelly
+//                         ^ meta.slice.nelly punctuation.section.brackets.begin.nelly
+//                            ^^ meta.slice.nelly constant.numeric.integer.nelly
+//                                     ^^^^^^^ meta.group.nelly comment.block.nelly
+//                                                 ^ punctuation.terminator.nelly - meta.group
+
+UNCLOSED: ('a' ;
+//             ^ punctuation.terminator.nelly - meta.group
+AFTER: 'ok';
+// <- entity.name.function.nelly
+
+MULTI
+// <- entity.name.function.nelly
+    : 'a'
+//  ^ punctuation.separator.definition.nelly
+//    ^^^ meta.definition.body.nelly string.quoted.single.nelly
+    | 'b' <% if $$ == 'b': fail() %>
+//  ^ meta.definition.body.nelly keyword.operator.alternation.nelly
+//              ^^ variable.language.nelly
+    ;
+//  ^ punctuation.terminator.nelly
+
+<%post
+//^^^^ keyword.control.block.nelly
+    print($$)
+//        ^^ meta.embedded.python.nelly variable.language.nelly
+%>
+// <- punctuation.section.embedded.end.nelly

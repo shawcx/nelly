@@ -1,0 +1,292 @@
+%YAML 1.2
+---
+# Syntax highlighting for nelly grammars. The token rules mirror
+# nelly/rules.lex; <% %> blocks are highlighted as Python.
+name: Nelly
+scope: source.nelly
+version: 2
+file_extensions:
+  - bnf
+
+variables:
+  name: '\w+'
+  dotted: '[\w.]+'
+
+contexts:
+  main:
+    - include: comments
+    - include: python-blocks
+    - include: strings
+    - match: '\binclude\b'
+      scope: keyword.control.import.nelly
+    - match: '(::)?(\$?{{name}})'
+      captures:
+        1: punctuation.accessor.nelly
+        2: entity.name.function.nelly
+      push: definition-head
+
+  # --- definitions ------------------------------------------------------------
+
+  definition-head:
+    - include: comments
+    - match: '\('
+      scope: punctuation.section.parens.begin.nelly
+      push: options
+    - match: ':'
+      scope: punctuation.separator.definition.nelly
+      set: definition-body
+    - match: '(?=\S)'
+      pop: true
+
+  options:
+    - meta_scope: meta.options.nelly
+    - include: comments
+    - match: '\)'
+      scope: punctuation.section.parens.end.nelly
+      pop: true
+    - match: ','
+      scope: punctuation.separator.nelly
+    - match: '\b(start|override|pure|corrupt)\b'
+      scope: storage.modifier.nelly
+    - match: '(@)({{name}})'
+      captures:
+        1: punctuation.definition.annotation.nelly
+        2: variable.annotation.nelly
+
+  definition-body:
+    - meta_scope: meta.definition.body.nelly
+    - match: ';'
+      scope: punctuation.terminator.nelly
+      pop: true
+    - include: expression
+
+  # --- expressions ------------------------------------------------------------
+
+  expression:
+    - include: comments
+    - include: python-blocks
+    - include: strings
+    - match: '\|'
+      scope: keyword.operator.alternation.nelly
+    - match: '\bempty\b'
+      scope: constant.language.empty.nelly
+    # \xNN and \dNN are single bytes; they come before back references
+    - match: '\\x[A-Fa-f0-9]+|\\d[0-9]+'
+      scope: constant.character.byte.nelly
+    - include: numbers
+    - match: '(\\)(\$?{{name}})'
+      scope: keyword.other.backref.nelly
+      captures:
+        1: punctuation.definition.backref.nelly
+    - match: '(%)({{dotted}})(\()'
+      captures:
+        1: punctuation.definition.function.nelly
+        2: variable.function.nelly
+        3: punctuation.section.arguments.begin.nelly
+      push: arguments
+    - match: '(&)({{dotted}})'
+      captures:
+        1: punctuation.definition.reference.nelly
+        2: variable.other.readwrite.nelly
+    - match: '(::)?(\${{name}})'
+      captures:
+        1: punctuation.accessor.nelly
+        2: variable.parameter.varterminal.nelly
+    - match: '(::)?({{name}})'
+      captures:
+        1: punctuation.accessor.nelly
+        2: variable.other.nonterminal.nelly
+    - match: '\('
+      scope: punctuation.section.group.begin.nelly
+      push: group
+    - match: '\['
+      scope: punctuation.section.brackets.begin.nelly
+      push: slice
+    - match: '\{'
+      scope: punctuation.section.braces.begin.nelly
+      push: range
+    - match: '(<)\s*([0-9]+(?:\.[0-9]+)?)\s*(>)'
+      scope: meta.weight.nelly
+      captures:
+        1: punctuation.definition.weight.begin.nelly
+        2: constant.numeric.weight.nelly
+        3: punctuation.definition.weight.end.nelly
+
+  group:
+    - meta_scope: meta.group.nelly
+    - match: '\)'
+      scope: punctuation.section.group.end.nelly
+      pop: true
+    # let the definition end even if the group was not closed
+    - match: '(?=;)'
+      pop: true
+    - include: expression
+
+  arguments:
+    - meta_scope: meta.function-call.arguments.nelly
+    - match: '\)'
+      scope: punctuation.section.arguments.end.nelly
+      pop: true
+    - match: ','
+      scope: punctuation.separator.arguments.nelly
+    - match: '(?=;)'
+      pop: true
+    - include: expression
+
+  slice:
+    - meta_scope: meta.slice.nelly
+    - match: '\]'
+      scope: punctuation.section.brackets.end.nelly
+      pop: true
+    - match: ':'
+      scope: punctuation.separator.slice.nelly
+    - include: numbers
+    - match: '(?=;)'
+      pop: true
+
+  range:
+    - meta_scope: meta.range.nelly
+    - match: '\}'
+      scope: punctuation.section.braces.end.nelly
+      pop: true
+    - match: ','
+      scope: punctuation.separator.range.nelly
+    - include: numbers
+    - match: '(?=;)'
+      pop: true
+
+  numbers:
+    - match: '[+-]?0x[A-Fa-f0-9]+\b'
+      scope: constant.numeric.hex.nelly
+    - match: '[+-]?0b[01]+\b'
+      scope: constant.numeric.binary.nelly
+    - match: '[+-]?0[0-7]+\b'
+      scope: constant.numeric.octal.nelly
+    - match: '[+-]?[0-9]*\.[0-9]+\b'
+      scope: constant.numeric.float.nelly
+    - match: '[+-]?[0-9]+\b'
+      scope: constant.numeric.integer.nelly
+
+  # --- comments ---------------------------------------------------------------
+
+  comments:
+    - match: '/\*'
+      scope: punctuation.definition.comment.begin.nelly
+      push: block-comment
+    - match: '(//|#).*$\n?'
+      scope: comment.line.nelly
+      captures:
+        1: punctuation.definition.comment.nelly
+
+  block-comment:
+    - meta_scope: comment.block.nelly
+    - match: '/\*'
+      scope: punctuation.definition.comment.begin.nelly
+      push: block-comment
+    - match: '\*/'
+      scope: punctuation.definition.comment.end.nelly
+      pop: true
+
+  # --- strings ----------------------------------------------------------------
+
+  strings:
+    - match: "(b)(''')"
+      captures:
+        1: storage.type.string.nelly
+        2: punctuation.definition.string.begin.nelly
+      push: triple-bytes
+    - match: '(b)(")'
+      captures:
+        1: storage.type.string.nelly
+        2: punctuation.definition.string.begin.nelly
+      push: double-bytes
+    - match: "(b)(')"
+      captures:
+        1: storage.type.string.nelly
+        2: punctuation.definition.string.begin.nelly
+      push: single-bytes
+    - match: "'''"
+      scope: punctuation.definition.string.begin.nelly
+      push: triple-string
+    - match: '"'
+      scope: punctuation.definition.string.begin.nelly
+      push: double-string
+    - match: "'"
+      scope: punctuation.definition.string.begin.nelly
+      push: single-string
+
+  string-escapes:
+    - match: '\\(?:U[0-9A-Fa-f]{8}|u[0-9A-Fa-f]{4}|x[0-9A-Fa-f]{2}|[\\''"abfnrtv]|$\n?)'
+      scope: constant.character.escape.nelly
+
+  byte-escapes:
+    - match: '\\(?:x[0-9A-Fa-f]{2}|[\\''"abfnrtv]|$\n?)'
+      scope: constant.character.escape.nelly
+
+  triple-string:
+    - meta_scope: string.quoted.triple.nelly
+    - match: "'''"
+      scope: punctuation.definition.string.end.nelly
+      pop: true
+    - include: string-escapes
+
+  double-string:
+    - meta_scope: string.quoted.double.nelly
+    - match: '"'
+      scope: punctuation.definition.string.end.nelly
+      pop: true
+    - include: string-escapes
+
+  single-string:
+    - meta_scope: string.quoted.single.nelly
+    - match: "'"
+      scope: punctuation.definition.string.end.nelly
+      pop: true
+    - include: string-escapes
+
+  triple-bytes:
+    - meta_scope: string.quoted.triple.bytes.nelly
+    - match: "'''"
+      scope: punctuation.definition.string.end.nelly
+      pop: true
+    - include: byte-escapes
+
+  double-bytes:
+    - meta_scope: string.quoted.double.bytes.nelly
+    - match: '"'
+      scope: punctuation.definition.string.end.nelly
+      pop: true
+    - include: byte-escapes
+
+  single-bytes:
+    - meta_scope: string.quoted.single.bytes.nelly
+    - match: "'"
+      scope: punctuation.definition.string.end.nelly
+      pop: true
+    - include: byte-escapes
+
+  # --- embedded Python ----------------------------------------------------------
+
+  python-blocks:
+    - match: '(<%)(pre|post)?'
+      captures:
+        1: punctuation.section.embedded.begin.nelly
+        2: keyword.control.block.nelly
+      push: python-block
+
+  python-block:
+    - meta_scope: meta.embedded.python.nelly
+    # source.python makes comment toggling use # inside the block
+    - meta_content_scope: source.python.embedded.nelly
+    - match: '\s*(%>)'
+      captures:
+        1: punctuation.section.embedded.end.nelly
+      pop: true
+    - match: ''
+      push: scope:source.python
+      with_prototype:
+        # like nelly's scanner, %> ends the block even inside a Python string
+        - match: '(?=\s*%>)'
+          pop: true
+        - match: '\$(?:\$|\*|\w+)'
+          scope: variable.language.nelly
