@@ -25,8 +25,8 @@ Installation
     pip install nelly          # from PyPI
     pip install .              # from a source checkout
 
-This installs a ``nelly`` command. From a checkout you can also run
-``python3 nelly.py`` without installing.
+This installs a ``nelly`` command, which can also be run as ``python3 -m nelly``.
+From a checkout you can run ``python3 nelly.py`` without installing.
 
 Quick start
 ===========
@@ -520,5 +520,5 @@ Development
 
 .. code-block:: sh
 
-    pip install pytest
+    pip install -e '.[test]'
     pytest

@@ -1,7 +1,10 @@
 import glob
 import io
+import logging
 import os
 import random
+import subprocess
+import sys
 
 import pytest
 
@@ -117,7 +120,7 @@ class TestErrors:
         ])
     def test_parse_error_is_logged(self, run, caplog, grammar, message):
         rc, out = run(grammar)
-        assert rc == -1
+        assert rc == 1
         assert message in caplog.text
 
     def test_unknown_varterminal(self, run, caplog):
@@ -126,7 +129,7 @@ class TestErrors:
 
     def test_missing_include(self, run, caplog):
         rc, out = run("include 'nope.bnf'\nX(start): 'a';")
-        assert rc == -1
+        assert rc == 1
         assert "Could not find include file 'nope.bnf'" in caplog.text
 
     def test_unreadable_include(self, run, caplog, tmp_path):
@@ -139,18 +142,55 @@ class TestErrors:
             rc, out = run("include 'secret.bnf'\nX(start): 'a';")
         finally:
             include.chmod(0o644)
-        assert rc == -1
+        assert rc == 1
         assert 'Could not read include file' in caplog.text
         assert 'Permission denied' in caplog.text
 
     def test_missing_grammar(self, caplog):
-        assert nelly.main.main(['/nonexistent/grammar.bnf']) == -1
+        assert nelly.main.main(['/nonexistent/grammar.bnf']) == 1
         assert 'Could not open grammar' in caplog.text
 
     def test_var_without_value(self, run, capsys):
         with pytest.raises(SystemExit):
             run("X(start): 'a';", '-v', 'foo')
-        assert '--vars expects KEY=VALUE' in capsys.readouterr().err
+        assert "expected KEY=VALUE, got 'foo'" in capsys.readouterr().err
+
+    def test_runtime_error_fails_run(self, run, caplog):
+        caplog.set_level(logging.INFO)
+        rc, out = run("X(start): 'a' 5;")
+        assert rc == 1
+        assert 'Cannot join str and int' in caplog.text
+        assert 'Ran 0 iterations' in caplog.text
+
+
+class TestCommandLine:
+    def test_python_m(self, tmp_path):
+        path = tmp_path / 'grammar.bnf'
+        path.write_text("X(start): 'hi';")
+        proc = subprocess.run([sys.executable, '-m', 'nelly', str(path), '-o', '-'],
+            cwd=ROOT, capture_output=True)
+        assert proc.returncode == 0
+        assert proc.stdout == b'hi'
+
+    def test_stdin(self, tmp_path):
+        proc = subprocess.run([sys.executable, '-m', 'nelly', '-o', '-'],
+            cwd=ROOT, input=b"X(start): 'in';", capture_output=True)
+        assert proc.stdout == b'in'
+
+    def test_error_exit_status(self, tmp_path):
+        proc = subprocess.run([sys.executable, os.path.join(ROOT, 'nelly.py'), '/nonexistent.bnf'],
+            capture_output=True)
+        assert proc.returncode == 1
+
+    def test_generate(self):
+        program = nelly.Parser().Parse(named_io("X(start): 'a' <% if $count == 2: bail() %>;"))
+        assert list(nelly.main.generate(program, {}, 5)) == [(0, 'a'), (1, 'a')]
+
+
+def named_io(text):
+    fp = io.StringIO(text)
+    fp.name = '<test>'
+    return fp
 
 
 class TestComments:

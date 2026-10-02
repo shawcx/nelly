@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=62.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nelly"
+description = "Python Test Case Generator"
+readme = {file = "docs/README.rst", content-type = "text/x-rst"}
+authors = [{name = "Matthew Shaw", email = "mshaw.cx@gmail.com"}]
+license = {text = "MIT"}
+requires-python = ">=3.8"
+dynamic = ["version"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Software Development :: Testing",
+    "Programming Language :: Python :: 3",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+docs = ["docutils", "pygments"]
+
+[project.urls]
+Homepage = "https://github.com/shawcx/nelly"
+
+[project.scripts]
+nelly = "nelly.main:main"
+
+[tool.setuptools]
+packages = ["nelly"]
+
+[tool.setuptools.package-data]
+nelly = ["rules.lex", "grammars/**/*.bnf"]
+
+[tool.setuptools.dynamic]
+version = {attr = "nelly.version.__version__"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
